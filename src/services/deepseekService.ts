@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { logger } from '../utils/logger';
+import { ollamaService } from './ollamaService';
 import type { ChatCompletionRequest, ChatCompletionResponse, ChatMessage } from '../types/openai';
 
 class DeepSeekService {
@@ -18,32 +19,58 @@ class DeepSeekService {
   }
 
   /**
-   * Mapea el modelo del proxy al modelo de DeepSeek
+   * Mapea el modelo del proxy al modelo destino
    */
-  private mapModel(proxyModel: string): string {
-    // Si el usuario pide el reasoner explícitamente, usarlo.
+  private mapModel(proxyModel: string): { target: 'deepseek' | 'ollama', model: string } {
+    // Modelos Ollama
+    const ollamaModels = [
+      'qwen2.5-instruct',
+      'qwen2.5-7b-instruct', 
+      'deepseek-coder-instruct',
+      'deepseek-coder-6.7b-instruct',
+      'qwen2.5',
+      'deepseek-coder',
+      'qwen',
+      'coder'
+    ];
+
+    if (ollamaModels.includes(proxyModel)) {
+      const ollamaModelMap: Record<string, string> = {
+        'qwen2.5-instruct': 'qwen2.5:7b-instruct',
+        'qwen2.5-7b-instruct': 'qwen2.5:7b-instruct',
+        'deepseek-coder-instruct': 'deepseek-coder:6.7b-instruct-q8_0',
+        'deepseek-coder-6.7b-instruct': 'deepseek-coder:6.7b-instruct-q8_0',
+        'qwen2.5': 'qwen2.5:7b-instruct',
+        'deepseek-coder': 'deepseek-coder:6.7b-instruct-q8_0',
+        'qwen': 'qwen2.5:7b-instruct',
+        'coder': 'deepseek-coder:6.7b-instruct-q8_0',
+      };
+      
+      return {
+        target: 'ollama',
+        model: ollamaModelMap[proxyModel] || proxyModel
+      };
+    }
+
+    // Modelos DeepSeek
     if (proxyModel.includes('reasoner')) {
-      return 'deepseek-reasoner';
+      return { target: 'deepseek', model: 'deepseek-reasoner' };
     }
     
-    // Mapeos explícitos para compatibilidad y enrutamiento
-    const modelMap: Record<string, string> = {
-      // Chat Model
+    const deepseekModelMap: Record<string, string> = {
       'deepseek-vision-chat': 'deepseek-chat',
       'vision-dsk-chat': 'deepseek-chat',
-      'gpt-4o': 'deepseek-chat',
-      'gpt-4-vision-preview': 'deepseek-chat',
-      'gemini-pro-vision': 'deepseek-chat',
-
-      // Reasoner Model
       'deepseek-vision-reasoner': 'deepseek-reasoner',
       'vision-dsk-reasoner': 'deepseek-reasoner',
-      'gpt-4-turbo': 'deepseek-reasoner',
-      'o1': 'deepseek-reasoner' 
     };
 
-    return modelMap[proxyModel] || 'deepseek-chat';
+    return {
+      target: 'deepseek',
+      model: deepseekModelMap[proxyModel] || 'deepseek-chat'
+    };
   }
+
+
 
   /**
    * Trunca el historial de mensajes para que quepa en el contexto
@@ -106,17 +133,108 @@ class DeepSeekService {
   }
 
   /**
-   * Forward del request a DeepSeek (sin streaming)
+   * Maneja las completiones de Ollama
+   */
+  private async handleOllamaCompletion(request: ChatCompletionRequest, model: string): Promise<ChatCompletionResponse> {
+    try {
+      const response = await ollamaService.generateCompletion(model, request.messages, {
+        temperature: request.temperature,
+        max_tokens: request.max_tokens,
+        top_p: request.top_p,
+        stream: false,
+      });
+
+      // Convertir respuesta de Ollama a formato OpenAI
+      return {
+        id: `ollama-${Date.now()}`,
+        object: 'chat.completion',
+        created: Math.floor(Date.now() / 1000),
+        model: model,
+        choices: [{
+          index: 0,
+          message: {
+            role: 'assistant',
+            content: response.message?.content || '',
+          },
+          finish_reason: 'stop',
+          logprobs: null,
+        }],
+        usage: {
+          prompt_tokens: 0,
+          completion_tokens: 0,
+          total_tokens: 0,
+        },
+      };
+    } catch (error: any) {
+      logger.error(`✗ Ollama error: ${error.message}`);
+      throw new Error(`Ollama request failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Maneja streaming de Ollama
+   */
+  private async handleOllamaStream(
+    request: ChatCompletionRequest,
+    model: string,
+    onChunk: (chunk: string) => void,
+    onError: (error: Error) => void,
+    onEnd: () => void
+  ): Promise<void> {
+    try {
+      await ollamaService.generateCompletionStream(
+        model,
+        request.messages,
+        {
+          temperature: request.temperature,
+          max_tokens: request.max_tokens,
+          top_p: request.top_p,
+        },
+        (content: string) => {
+          // Convertir a formato SSE
+          const chunk = {
+            id: `ollama-${Date.now()}`,
+            object: 'chat.completion.chunk',
+            created: Math.floor(Date.now() / 1000),
+            model: model,
+            choices: [{
+              index: 0,
+              delta: {
+                role: 'assistant',
+                content: content,
+              },
+              finish_reason: null,
+              logprobs: null,
+            }],
+          };
+          onChunk(`data: ${JSON.stringify(chunk)}\n\n`);
+        },
+        onError,
+        onEnd
+      );
+    } catch (error: any) {
+      onError(new Error(`Ollama stream failed: ${error.message}`));
+    }
+  }
+
+  /**
+   * Forward del request a DeepSeek o Ollama (sin streaming)
    */
   async chatCompletion(request: ChatCompletionRequest): Promise<ChatCompletionResponse> {
-    const mappedModel = this.mapModel(request.model);
-    logger.info(`→ Forwarding to DeepSeek (model: ${mappedModel})`);
+    const mapped = this.mapModel(request.model);
+    
+    // Enrutar a Ollama si es un modelo local
+    if (mapped.target === 'ollama') {
+      return this.handleOllamaCompletion(request, mapped.model);
+    }
+    
+    logger.info(`→ Forwarding to DeepSeek (model: ${mapped.model})`);
     
     const validMessages = this.prepareMessages(request.messages);
     const truncatedMessages = this.truncateMessages(validMessages, 100000);
 
     const payload: any = {
-      model: mappedModel,
+      model: mapped.model,
       messages: truncatedMessages,
       stream: false,
     };
@@ -128,7 +246,7 @@ class DeepSeekService {
     if (request.temperature !== undefined) payload.temperature = request.temperature;
     if (request.top_p !== undefined) payload.top_p = request.top_p;
     
-    const maxOutputTokens = mappedModel === 'deepseek-reasoner' ? 16000 : 4000;
+    const maxOutputTokens = mapped.model === 'deepseek-reasoner' ? 16000 : 4000;
     const requestedMaxTokens = request.max_tokens || maxOutputTokens;
     payload.max_tokens = Math.min(requestedMaxTokens, maxOutputTokens);
     
@@ -155,7 +273,7 @@ class DeepSeekService {
   }
 
   /**
-   * Forward del request a DeepSeek con streaming (SSE)
+   * Forward del request a DeepSeek o Ollama con streaming (SSE)
    */
   async chatCompletionStream(
     request: ChatCompletionRequest,
@@ -163,14 +281,20 @@ class DeepSeekService {
     onError: (error: Error) => void,
     onEnd: () => void
   ): Promise<void> {
-    const mappedModel = this.mapModel(request.model);
-    logger.info(`→ Forwarding to DeepSeek (model: ${mappedModel}, streaming: true)`);
+    const mapped = this.mapModel(request.model);
+    
+    // Enrutar a Ollama si es un modelo local
+    if (mapped.target === 'ollama') {
+      return this.handleOllamaStream(request, mapped.model, onChunk, onError, onEnd);
+    }
+    
+    logger.info(`→ Forwarding to DeepSeek (model: ${mapped.model}, streaming: true)`);
     
     const validMessages = this.prepareMessages(request.messages);
     const truncatedMessages = this.truncateMessages(validMessages, 100000);
 
     const payload: any = {
-      model: mappedModel,
+      model: mapped.model,
       messages: truncatedMessages,
       stream: true,
     };
@@ -182,7 +306,7 @@ class DeepSeekService {
     if (request.temperature !== undefined) payload.temperature = request.temperature;
     if (request.top_p !== undefined) payload.top_p = request.top_p;
     
-    const maxOutputTokens = mappedModel === 'deepseek-reasoner' ? 16000 : 4000;
+    const maxOutputTokens = mapped.model === 'deepseek-reasoner' ? 16000 : 4000;
     const requestedMaxTokens = request.max_tokens || maxOutputTokens;
     payload.max_tokens = Math.min(requestedMaxTokens, maxOutputTokens);
     

@@ -62,6 +62,7 @@ export interface ChatCompletionChoice {
   index: number;
   message: ChatMessage;
   finish_reason: 'stop' | 'length' | 'content_filter' | 'tool_calls' | null;
+  logprobs?: any | null;
 }
 
 export interface ChatCompletionChunk {
@@ -80,6 +81,7 @@ export interface ChatCompletionChunkChoice {
     tool_calls?: any[];
   };
   finish_reason: 'stop' | 'length' | 'content_filter' | 'tool_calls' | null;
+  logprobs?: any | null;
 }
 
 export interface ErrorResponse {

@@ -1,30 +1,62 @@
-# DeepSeek Vision Proxy (Gemini Edition)
+# DeepSeek Vision Proxy (Gemini + Ollama Edition)
 
-Proxy HTTP OpenAI-compatible que añade capacidades de visión a DeepSeek utilizando **Google Gemini 2.5 Flash** para el análisis de imágenes.
+Proxy HTTP OpenAI-compatible que añade capacidades de visión a DeepSeek utilizando **Google Gemini 2.5 Flash** para el análisis de imágenes, y soporta modelos locales de **Ollama** como alternativas.
 
 ## 🎯 Características
 
 - ✅ **Visión por Gemini 2.5 Flash**: Análisis de imágenes ultra-rápido y preciso.
+- ✅ **Modelos locales Ollama**: Soporte para qwen2.5:7b-instruct y deepseek-coder:6.7b-instruct-q8_0.
 - ✅ **Prompting Contextual**: El análisis de la imagen se adapta inteligentemente a la pregunta del usuario.
 - ✅ **Detección multiformato**: Soporta Base64, URLs y archivos locales.
 - ✅ **Caché Inteligente**: Hash contextual SHA-256 para evitar llamadas repetidas a la API (TTL configurable).
 - ✅ **Streaming SSE**: Respuestas en tiempo real compatibles con clientes OpenAI.
 - ✅ **Zero Overhead**: Passthrough directo si no hay imágenes.
+- ✅ **Enrutamiento inteligente**: Detecta automáticamente si usar DeepSeek API o modelos locales Ollama.
 
 ## 📦 Requisitos
 
 - **Node.js** >= 18.0.0
-- **DeepSeek API Key**
-- **Google Gemini API Key**
+- **DeepSeek API Key** (opcional, para modelos en la nube)
+- **Google Gemini API Key** (para visión)
+- **Ollama** >= 0.15.0 (para modelos locales)
 
 ## 🚀 Instalación Rápida
 
+### Opción 1: Script Automático (Recomendado)
 ```bash
 cd /home/exithial/Proyectos/deepseek-vision-proxy
-./install.sh
+./setup-deepseek-proxy.sh
 ```
 
-Esto instalará dependencias, compilará el proyecto y configurará el servicio systemd.
+Esto configurará todo automáticamente:
+- Detendrá procesos existentes (sin interrumpir OpenCode)
+- Recompilará el proyecto
+- Creará servicio systemd con inicio automático
+- Verificará que todo funcione correctamente
+
+### Opción 2: Instalación Manual
+```bash
+# 1. Instalar dependencias
+npm install
+
+# 2. Compilar
+npm run build
+
+# 3. Configurar variables de entorno
+cp .env.example .env
+# Editar .env con tus API keys
+
+# 4. Iniciar
+npm run dev  # Modo desarrollo
+# o
+npm start    # Modo producción
+```
+
+### Scripts de Gestión Disponibles:
+- `./setup-deepseek-proxy.sh` - Configuración completa
+- `./check-proxy-status.sh` - Verificación de estado
+- `./uninstall-proxy.sh` - Desinstalación completa
+- `./test-proxy-complete.js` - Pruebas integrales
 
 ## ⚙️ Configuración
 
@@ -41,8 +73,12 @@ GEMINI_API_KEY=tu_api_key_de_google_aistudio
 # Configuración del Modelo
 GEMINI_MODEL=gemini-2.5-flash
 
-# DeepSeek API
+# DeepSeek API (opcional, para modelos en la nube)
 DEEPSEEK_API_KEY=sk-tu-api-key-aqui
+
+# Ollama (para modelos locales)
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_TIMEOUT_MS=60000
 
 # Caché (Recomendado)
 CACHE_ENABLED=true
@@ -51,13 +87,14 @@ CACHE_TTL_DAYS=7
 
 ## 🔌 Integración con OpenCode
 
+### Configuración Simplificada (Recomendada)
 Agrega esto a tu `~/.config/opencode/opencode.json`:
 
 ```json
 {
   "provider": {
-    "deepseek": {
-      "name": "DeepSeek Vision (Gemini Proxy)",
+    "deepseek-proxy": {
+      "name": "DeepSeek + Ollama con Visión (Proxy)",
       "npm": "@ai-sdk/openai-compatible",
       "options": {
         "baseURL": "http://localhost:7777/v1",
@@ -67,8 +104,8 @@ Agrega esto a tu `~/.config/opencode/opencode.json`:
         "vision-dsk-chat": {
           "name": "vision-dsk-chat",
           "limit": {
-            "context": 100000,
-            "output": 4000
+            "context": 128000,
+            "output": 8000
           },
           "modalities": {
             "input": ["text", "image"],
@@ -78,30 +115,30 @@ Agrega esto a tu `~/.config/opencode/opencode.json`:
         "vision-dsk-reasoner": {
           "name": "vision-dsk-reasoner",
           "limit": {
-            "context": 100000,
-            "output": 16000
+            "context": 128000,
+            "output": 64000
           },
           "modalities": {
             "input": ["text", "image"],
             "output": ["text"]
           }
         },
-        "deepseek-vision-chat": {
-          "name": "deepseek-vision-chat",
+        "qwen2.5:7b-instruct": {
+          "name": "qwen2.5:7b-instruct",
           "limit": {
-            "context": 100000,
-            "output": 4000
+            "context": 131072,
+            "output": 8192
           },
           "modalities": {
             "input": ["text", "image"],
             "output": ["text"]
           }
         },
-        "deepseek-vision-reasoner": {
-          "name": "deepseek-vision-reasoner",
+        "deepseek-coder:6.7b-instruct-q8_0": {
+          "name": "deepseek-coder:6.7b-instruct-q8_0",
           "limit": {
-            "context": 100000,
-            "output": 16000
+            "context": 16384,
+            "output": 4096
           },
           "modalities": {
             "input": ["text", "image"],
@@ -113,6 +150,8 @@ Agrega esto a tu `~/.config/opencode/opencode.json`:
   }
 }
 ```
+
+**Nota:** Esta configuración incluye solo 4 modelos principales con visión habilitada para todos. El proxy expone 10 modelos, pero OpenCode usa esta selección simplificada.
 
 ## 🔄 Flujo de Trabajo
 

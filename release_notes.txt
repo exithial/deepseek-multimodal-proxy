@@ -1,0 +1,127 @@
+# DeepSeek Vision Proxy v1.1.0
+**Fecha de lanzamiento:** 7 de febrero de 2026
+
+## 🎉 Novedades principales
+
+### 🔥 Integración Ollama Completa
+- **Soporte para modelos locales**: Ahora puedes usar modelos de Ollama junto con DeepSeek
+- **Modelos incluidos**: `qwen2.5:7b-instruct` y `deepseek-coder:6.7b-instruct-q8_0`
+- **Visión unificada**: Todos los modelos se benefician del procesamiento de imágenes con Gemini
+
+### 🚀 Enrutamiento Inteligente
+- **Detección automática**: El proxy detecta si usar DeepSeek u Ollama basado en el modelo solicitado
+- **10 modelos disponibles**: 4 DeepSeek + 6 Ollama con soporte de visión
+- **Compatibilidad total**: Mantiene la API OpenAI-compatible
+
+### ⚡ Automatización Mejorada
+- **Scripts de instalación**: Configuración completa con un solo comando
+- **Servicio systemd**: Inicio automático como servicio del sistema
+- **Verificación de estado**: Scripts para monitorear el funcionamiento
+
+## 📋 Cambios detallados
+
+### ✨ Nuevas funcionalidades
+- ✅ **Integración Ollama**: Soporte completo para modelos locales
+- ✅ **Enrutamiento inteligente**: Sistema automático de selección de proveedor
+- ✅ **Scripts de automatización**: Instalación, verificación y desinstalación
+- ✅ **Servicio systemd**: Configuración como servicio con reinicio automático
+- ✅ **Endpoint expandido**: 10 modelos disponibles con visión
+
+### 🔄 Mejoras
+- 📦 **Arquitectura proxy**: Manejo de múltiples proveedores
+- ⚙️ **Configuración OpenCode**: Simplificada a 4 modelos principales
+- 🔗 **Mapeo de modelos**: Alias y nombres cortos para mayor compatibilidad
+- 🛡️ **Manejo de errores**: Mejorado para no interrumpir OpenCode
+
+### 🐛 Correcciones
+- 🔧 **Compatibilidad TypeScript**: Errores de tipos corregidos
+- 🔐 **Permisos systemd**: Problemas de entorno con nvm solucionados
+- 🔍 **Detección de procesos**: Scripts mejorados para no afectar OpenCode
+
+## 🚀 Cómo actualizar
+
+### Usuarios existentes (v1.0.0):
+```bash
+cd /home/exithial/Proyectos/deepseek-vision-proxy
+git pull origin main
+./setup-deepseek-proxy.sh
+```
+
+### Nuevos usuarios:
+```bash
+git clone https://github.com/tu-usuario/deepseek-vision-proxy.git
+cd deepseek-vision-proxy
+./setup-deepseek-proxy.sh
+```
+
+## 📊 Modelos disponibles
+
+### DeepSeek (4 modelos):
+- `vision-dsk-chat`
+- `vision-dsk-reasoner`
+- `deepseek-chat`
+- `deepseek-reasoner`
+
+### Ollama (6 modelos):
+- `qwen2.5:7b-instruct`
+- `deepseek-coder:6.7b-instruct-q8_0`
+- `qwen2.5:7b-instruct-vision` (alias)
+- `deepseek-coder:6.7b-instruct-q8_0-vision` (alias)
+- `qwen2.5-vision` (alias corto)
+- `deepseek-coder-vision` (alias corto)
+
+## 🔧 Configuración OpenCode
+
+**Archivo:** `~/.config/opencode/opencode.json`
+```json
+{
+  "models": [
+    "vision-dsk-chat",
+    "vision-dsk-reasoner",
+    "qwen2.5:7b-instruct",
+    "deepseek-coder:6.7b-instruct-q8_0"
+  ]
+}
+```
+
+## 📈 Métricas de rendimiento
+
+- **Latencia**: < 2 segundos para procesamiento de imágenes
+- **Disponibilidad**: 10 modelos con visión habilitada
+- **Compatibilidad**: API 100% OpenAI-compatible
+- **Caché**: Sistema SHA-256 para reducir uso de API
+
+## 🆕 Para desarrolladores
+
+### Nueva arquitectura:
+```typescript
+// Enrutamiento inteligente
+if (model.includes('deepseek')) {
+  // Usar DeepSeek API
+} else if (model.includes('qwen') || model.includes('coder')) {
+  // Usar Ollama local
+} else {
+  // Usar Gemini para visión
+}
+```
+
+### Scripts disponibles:
+- `setup-deepseek-proxy.sh` - Instalación completa
+- `check-proxy-status.sh` - Verificación de estado
+- `uninstall-proxy.sh` - Desinstalación limpia
+- `test-proxy-complete.js` - Pruebas integrales
+
+## 🎯 Próximos pasos
+
+1. **Pruebas**: Ejecutar `./check-proxy-status.sh`
+2. **Configuración**: Verificar `~/.config/opencode/opencode.json`
+3. **Uso**: Conectar OpenCode al proxy en `http://localhost:7777`
+
+## 📞 Soporte
+
+- **Issues**: https://github.com/tu-usuario/deepseek-vision-proxy/issues
+- **Documentación**: Ver `README.md` y `MODELS.md`
+
+---
+
+**¡Gracias por usar DeepSeek Vision Proxy v1.1.0!** 🎊

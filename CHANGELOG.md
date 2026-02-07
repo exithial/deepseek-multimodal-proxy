@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [1.1.0] - 2026-02-07
+
+### Added
+- **Integración Ollama**: Soporte para modelos locales de Ollama (qwen2.5:7b-instruct y deepseek-coder:6.7b-instruct-q8_0) a través del proxy.
+- **Enrutamiento Inteligente**: Sistema que detecta automáticamente si un request debe ir a DeepSeek o Ollama basado en el modelo solicitado.
+- **Visión Unificada**: Todos los modelos (DeepSeek y Ollama) ahora se benefician del procesamiento de imágenes con Gemini.
+- **Scripts de Automatización**: Sistema completo de scripts bash para instalación, verificación y desinstalación del proxy.
+- **Servicio Systemd**: Configuración de inicio automático como servicio del sistema con reinicio automático.
+- **Endpoint de Modelos Expandido**: Ahora expone 10 modelos (4 DeepSeek + 6 Ollama) con soporte de visión.
+
+### Changed
+- **Arquitectura Proxy**: Modificado para manejar múltiples proveedores (DeepSeek y Ollama) en un solo endpoint.
+- **Configuración OpenCode**: Simplificada a 4 modelos principales con visión habilitada para todos.
+- **Mapeo de Modelos**: Sistema mejorado que soporta alias y nombres cortos para mayor compatibilidad.
+- **Manejo de Errores**: Mejorado para identificar y manejar procesos específicos sin interrumpir OpenCode.
+
+### Fixed
+- **Compatibilidad TypeScript**: Corregidos errores de tipos en el servicio de enrutamiento.
+- **Permisos Systemd**: Solucionado problema de permisos y entorno para ejecución con nvm.
+- **Detección de Procesos**: Scripts mejorados para no detener procesos de OpenCode en ejecución.
+
 ## [1.0.0] - 2026-02-06
 
 ### Added
