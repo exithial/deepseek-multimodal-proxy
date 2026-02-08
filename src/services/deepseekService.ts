@@ -22,28 +22,24 @@ class DeepSeekService {
    * Mapea el modelo del proxy al modelo destino
    */
   private mapModel(proxyModel: string): { target: 'deepseek' | 'ollama', model: string } {
-    // Modelos Ollama
+    // Modelos Ollama (solo qwen2.5:7b-instruct)
     const ollamaModels = [
       'qwen2.5-instruct',
       'qwen2.5-7b-instruct', 
-      'deepseek-coder-instruct',
-      'deepseek-coder-6.7b-instruct',
       'qwen2.5',
-      'deepseek-coder',
       'qwen',
-      'coder'
+      // Modelo con dos puntos (para compatibilidad directa con OpenCode)
+      'qwen2.5:7b-instruct'
     ];
 
     if (ollamaModels.includes(proxyModel)) {
       const ollamaModelMap: Record<string, string> = {
         'qwen2.5-instruct': 'qwen2.5:7b-instruct',
         'qwen2.5-7b-instruct': 'qwen2.5:7b-instruct',
-        'deepseek-coder-instruct': 'deepseek-coder:6.7b-instruct-q8_0',
-        'deepseek-coder-6.7b-instruct': 'deepseek-coder:6.7b-instruct-q8_0',
         'qwen2.5': 'qwen2.5:7b-instruct',
-        'deepseek-coder': 'deepseek-coder:6.7b-instruct-q8_0',
         'qwen': 'qwen2.5:7b-instruct',
-        'coder': 'deepseek-coder:6.7b-instruct-q8_0',
+        // Modelo con dos puntos (mapeo directo)
+        'qwen2.5:7b-instruct': 'qwen2.5:7b-instruct',
       };
       
       return {
@@ -182,6 +178,10 @@ class DeepSeekService {
     onEnd: () => void
   ): Promise<void> {
     try {
+      // Necesitamos una variable para el ID del stream para mantenerlo consistente
+      const streamId = `ollama-${Date.now()}`;
+      const createdAt = Math.floor(Date.now() / 1000);
+      
       await ollamaService.generateCompletionStream(
         model,
         request.messages,
@@ -193,9 +193,9 @@ class DeepSeekService {
         (content: string) => {
           // Convertir a formato SSE
           const chunk = {
-            id: `ollama-${Date.now()}`,
+            id: streamId,
             object: 'chat.completion.chunk',
-            created: Math.floor(Date.now() / 1000),
+            created: createdAt,
             model: model,
             choices: [{
               index: 0,
@@ -210,7 +210,24 @@ class DeepSeekService {
           onChunk(`data: ${JSON.stringify(chunk)}\n\n`);
         },
         onError,
-        onEnd
+         () => {
+           // NOTE: OpenCode requiere chunk final con finish_reason para detectar fin del stream
+           // Sin esto, OpenCode borra el mensaje después de que Ollama termina
+           const finalChunk = {
+            id: streamId,
+            object: 'chat.completion.chunk',
+            created: createdAt,
+            model: model,
+            choices: [{
+              index: 0,
+              delta: {},
+              finish_reason: 'stop',
+              logprobs: null,
+            }],
+          };
+          onChunk(`data: ${JSON.stringify(finalChunk)}\n\n`);
+          onEnd();
+        }
       );
     } catch (error: any) {
       onError(new Error(`Ollama stream failed: ${error.message}`));

@@ -5,7 +5,7 @@ Proxy HTTP OpenAI-compatible que añade capacidades de visión a DeepSeek utiliz
 ## 🎯 Características
 
 - ✅ **Visión por Gemini 2.5 Flash**: Análisis de imágenes ultra-rápido y preciso.
-- ✅ **Modelos locales Ollama**: Soporte para qwen2.5:7b-instruct y deepseek-coder:6.7b-instruct-q8_0.
+- ✅ **Modelos locales Ollama**: Soporte para qwen2.5:7b-instruct (simplificado a un solo modelo local).
 - ✅ **Prompting Contextual**: El análisis de la imagen se adapta inteligentemente a la pregunta del usuario.
 - ✅ **Detección multiformato**: Soporta Base64, URLs y archivos locales.
 - ✅ **Caché Inteligente**: Hash contextual SHA-256 para evitar llamadas repetidas a la API (TTL configurable).
@@ -133,17 +133,6 @@ Agrega esto a tu `~/.config/opencode/opencode.json`:
             "input": ["text", "image"],
             "output": ["text"]
           }
-        },
-        "deepseek-coder:6.7b-instruct-q8_0": {
-          "name": "deepseek-coder:6.7b-instruct-q8_0",
-          "limit": {
-            "context": 16384,
-            "output": 4096
-          },
-          "modalities": {
-            "input": ["text", "image"],
-            "output": ["text"]
-          }
         }
       }
     }
@@ -151,7 +140,7 @@ Agrega esto a tu `~/.config/opencode/opencode.json`:
 }
 ```
 
-**Nota:** Esta configuración incluye solo 4 modelos principales con visión habilitada para todos. El proxy expone 10 modelos, pero OpenCode usa esta selección simplificada.
+**Nota:** Esta configuración incluye solo 3 modelos principales con visión habilitada para todos. El proxy expone 8 modelos (4 DeepSeek + 4 qwen2.5:7b-instruct con diferentes alias), pero OpenCode usa esta selección simplificada.
 
 ## 🔄 Flujo de Trabajo
 

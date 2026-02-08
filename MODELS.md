@@ -12,15 +12,11 @@
   - Excelente en generación de texto largo
   - Soporte multilingüe (29+ idiomas)
 
-### DeepSeek-Coder:6.7B-Instruct-Q8_0
-- **Contexto máximo**: 16,384 tokens (16K)
-- **Generación máxima**: 4,096 tokens (estimado)
-- **Fuente**: [Config.json del modelo](https://huggingface.co/deepseek-ai/DeepSeek-Coder-6.7B-Instruct/raw/main/config.json)
-- **Características**:
-  - Especializado en código
-  - Entrenado con 87% código, 13% lenguaje natural
-  - Ventana de 16K para completado de código a nivel de proyecto
-  - Tarea de rellenar espacios en blanco
+### ⚠️ Nota: DeepSeek-Coder Eliminado
+- **Estado**: Eliminado de la compatibilidad con Ollama en el proxy
+- **Razón**: Simplificación del stack de modelos locales
+- **Alternativa**: Los modelos `deepseek-coder*` ahora se enrutan a DeepSeek API
+- **Recomendación**: Usar `qwen2.5:7b-instruct` para tareas locales o DeepSeek API para código
 
 ## Modelos DeepSeek API
 
@@ -49,19 +45,19 @@ El proxy detecta automáticamente el destino basado en el modelo solicitado:
 ```typescript
 // Ejemplo de enrutamiento:
 "vision-dsk-chat" → DeepSeek API (con visión Gemini)
-"qwen2.5-instruct" → Ollama local (con visión Gemini)
-"deepseek-coder" → Ollama local (con visión Gemini)
+"qwen2.5:7b-instruct" → Ollama local (con visión Gemini)
+"deepseek-coder" → DeepSeek API (con visión Gemini) - Ahora enruta a DeepSeek
 ```
 
 ### 📊 Modelos Disponibles en el Proxy
-El proxy expone **10 modelos** con visión:
+El proxy expone **8 modelos** con visión:
 
 | Tipo | Modelos Proxy | Modelo Destino | Contexto | Output | Visión |
 |------|---------------|----------------|----------|--------|--------|
 | **DeepSeek Chat** | `vision-dsk-chat`, `deepseek-vision-chat` | `deepseek-chat` | 128K | 8K | ✅ |
 | **DeepSeek Reasoner** | `vision-dsk-reasoner`, `deepseek-vision-reasoner` | `deepseek-reasoner` | 128K | 64K | ✅ |
-| **Qwen2.5** | `qwen2.5-instruct`, `qwen2.5-7b-instruct`, `qwen2.5` | `qwen2.5:7b-instruct` | 131K | 8K | ✅ |
-| **DeepSeek Coder** | `deepseek-coder-instruct`, `deepseek-coder-6.7b-instruct`, `deepseek-coder` | `deepseek-coder:6.7b-instruct-q8_0` | 16K | 4K | ✅ |
+| **Qwen2.5** | `qwen2.5-instruct`, `qwen2.5-7b-instruct`, `qwen2.5`, `qwen2.5:7b-instruct` | `qwen2.5:7b-instruct` | 131K | 8K | ✅ |
+| **DeepSeek Coder** | `deepseek-coder-instruct`, `deepseek-coder-6.7b-instruct`, `deepseek-coder`, `deepseek-coder:6.7b-instruct-q8_0` | `deepseek-chat` (API) | 128K | 8K | ✅ |
 
 ## Configuración Recomendada
 
@@ -73,11 +69,11 @@ El proxy expone **10 modelos** con visión:
 }
 ```
 
-### Para DeepSeek Coder:
+### Para DeepSeek Coder (ahora via API):
 ```json
 {
-  "context": 16384,
-  "output": 4096
+  "context": 128000,
+  "output": 8000
 }
 ```
 
@@ -97,9 +93,9 @@ El proxy expone **10 modelos** con visión:
    - Quantización del modelo (Q8_0, Q4_K_M, etc.)
    - Configuración de memoria
 3. **Para uso óptimo**:
-   - Qwen2.5: Ideal para tareas de texto largo y multilingües
-   - DeepSeek Coder: Especializado en programación y código
-   - DeepSeek API: Mejor para tareas generales con visión
+   - Qwen2.5: Ideal para tareas de texto largo y multilingües (local)
+   - DeepSeek Coder: Ahora usa DeepSeek API para programación y código
+   - DeepSeek API: Mejor para tareas generales y de programación con visión
 
 ## Verificación
 
@@ -107,5 +103,6 @@ Para verificar los modelos instalados en Ollama:
 ```bash
 ollama list
 ollama show qwen2.5:7b-instruct --modelfile | head -10
-ollama show deepseek-coder:6.7b-instruct-q8_0 --modelfile | head -10
 ```
+
+**Nota**: `deepseek-coder:6.7b-instruct-q8_0` ya no es necesario para el proxy, pero puede mantenerse instalado para uso directo con Ollama.

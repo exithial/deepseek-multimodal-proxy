@@ -16,17 +16,13 @@ class OllamaService {
    */
   private mapModel(proxyModel: string): string {
     const modelMap: Record<string, string> = {
-      // Modelos Ollama locales
+      // Modelos Ollama locales (solo qwen2.5:7b-instruct)
       'qwen2.5-instruct': 'qwen2.5:7b-instruct',
       'qwen2.5-7b-instruct': 'qwen2.5:7b-instruct',
-      'deepseek-coder-instruct': 'deepseek-coder:6.7b-instruct-q8_0',
-      'deepseek-coder-6.7b-instruct': 'deepseek-coder:6.7b-instruct-q8_0',
       
       // Alias para compatibilidad
       'qwen2.5': 'qwen2.5:7b-instruct',
-      'deepseek-coder': 'deepseek-coder:6.7b-instruct-q8_0',
       'qwen': 'qwen2.5:7b-instruct',
-      'coder': 'deepseek-coder:6.7b-instruct-q8_0',
     };
 
     return modelMap[proxyModel] || proxyModel;
@@ -162,6 +158,9 @@ class OllamaService {
         }
       );
 
+       // NOTE: Prevención de doble llamada a onEnd() - Ollama puede emitir 'data.done' y luego 'end'
+       let streamEnded = false;
+      
       response.data.on('data', (chunk: Buffer) => {
         const lines = chunk.toString().split('\n').filter(line => line.trim() !== '');
         for (const line of lines) {
@@ -170,7 +169,8 @@ class OllamaService {
             if (data.message && data.message.content) {
               onChunk(data.message.content);
             }
-            if (data.done) {
+            if (data.done && !streamEnded) {
+              streamEnded = true;
               onEnd();
             }
           } catch (e) {
@@ -180,7 +180,12 @@ class OllamaService {
       });
 
       response.data.on('error', (error: Error) => onError(error));
-      response.data.on('end', () => onEnd());
+      response.data.on('end', () => {
+        if (!streamEnded) {
+          streamEnded = true;
+          onEnd();
+        }
+      });
 
     } catch (error: any) {
       this.handleStreamError(error, onError);
