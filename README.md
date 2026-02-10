@@ -92,9 +92,8 @@ Agrega esto a tu `~/.config/opencode/opencode.json`:
 
 ```json
 {
-  "provider": {
     "deepseek-proxy": {
-      "name": "DeepSeek + Ollama con Visión (Proxy)",
+      "name": "DeepSeek con Visión (Proxy)",
       "npm": "@ai-sdk/openai-compatible",
       "options": {
         "baseURL": "http://localhost:7777/v1",
@@ -103,8 +102,12 @@ Agrega esto a tu `~/.config/opencode/opencode.json`:
       "models": {
         "vision-dsk-chat": {
           "name": "vision-dsk-chat",
+          "cost": {
+            "input": 0.27,
+            "output": 1.1
+          },
           "limit": {
-            "context": 128000,
+            "context": 100000,
             "output": 8000
           },
           "modalities": {
@@ -112,11 +115,14 @@ Agrega esto a tu `~/.config/opencode/opencode.json`:
             "output": ["text"]
           }
         },
-        },
         "vision-dsk-reasoner": {
           "name": "vision-dsk-reasoner",
+          "cost": {
+            "input": 0.55,
+            "output": 2.19
+          },
           "limit": {
-            "context": 128000,
+            "context": 100000,
             "output": 64000
           },
           "modalities": {

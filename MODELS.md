@@ -5,20 +5,20 @@
 ### DeepSeek Chat
 
 - **Contexto máximo**: 128,000 tokens
-- **Generación máxima**: 4,000 tokens
+- **Generación máxima**: 8,000 tokens
 - **Características**: Modelo general de chat
 
 ### DeepSeek Reasoner
 
 - **Contexto máximo**: 128,000 tokens
-- **Generación máxima**: 16,000 tokens
+- **Generación máxima**: 64,000 tokens
 - **Características**: Modelo de razonamiento mejorado
 
 ## Modelos con Visión
 
 ### 🖼️ Visión Unificada con Gemini
 
-**Todos los modelos** (DeepSeek y Ollama) ahora usan **Gemini 2.5 Flash** para análisis de imágenes:
+**Todos los modelos** ahora usan **Gemini 2.5 Flash** para análisis de imágenes:
 
 - **Procesamiento universal**: Cualquier modelo que pase por el proxy tiene visión habilitada
 - **Análisis de imágenes**: Procesado por Gemini (hasta 10MB por imagen)
@@ -31,9 +31,8 @@ El proxy detecta automáticamente el destino basado en el modelo solicitado:
 
 ```typescript
 // Ejemplo de enrutamiento:
-"vision-dsk-chat" → DeepSeek API (con visión Gemini)
-"qwen2.5:7b-instruct" → Ollama local (con visión Gemini)
-"deepseek-coder" → DeepSeek API (con visión Gemini) - Ahora enruta a DeepSeek
+"vision-dsk-chat"     → DeepSeek API (con visión Gemini)
+"vision-dsk-reasoner" → DeepSeek API (con visión Gemini)
 ```
 
 ### 📊 Modelos Disponibles en el Proxy
@@ -45,22 +44,28 @@ El proxy expone **8 modelos** con visión:
 | **DeepSeek Chat**     | `vision-dsk-chat`, `deepseek-vision-chat`         | `deepseek-chat`     | 128K     | 8K     | ✅     |
 | **DeepSeek Reasoner** | `vision-dsk-reasoner`, `deepseek-vision-reasoner` | `deepseek-reasoner` | 128K     | 64K    | ✅     |
 
-## Configuración Recomendada
-
-### Para DeepSeek Coder (ahora via API):
+### Para DeepSeek Chat:
 
 ```json
 {
-  "context": 128000,
-  "output": 8000
+  "context": 100000,
+  "output": 8000,
+  "cost": {
+    "input": 0.27,
+    "output": 1.1
+  }
 }
 ```
 
-### Para DeepSeek API:
+### Para DeepSeek Reasoner:
 
 ```json
 {
-  "context": 128000,
-  "output": 4000 // 16000 para Reasoner
+  "context": 100000,
+  "output": 64000,
+  "cost": {
+    "input": 0.55,
+    "output": 2.19
+  }
 }
 ```

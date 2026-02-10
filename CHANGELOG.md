@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.2] - 2026-02-09
+
+### Added
+
+- **Configuración por Entorno**: Ahora los límites de tokens son totalmente configurables vía `.env` (`DEEPSEEK_CONTEXT_WINDOW_CHAT`, `DEEPSEEK_MAX_OUTPUT_CHAT`, etc.).
+- **Límites Granulares**: Control independiente de ventana de contexto y salida para modelos Chat y Reasoner.
+
+### Changed
+
+- **Límites de Salida (Propuesta Captura)**: Aumentados para aprovechar al máximo los modelos (Chat: 8k, Reasoner: 64k).
+- **Limpieza de Código**: Eliminadas todas las referencias residuales y comentarios legacy de Ollama en `deepseekService.ts` y documentación interna.
+
+## [1.2.1] - 2026-02-09
+
+### Changed
+
+- **Límites de Salida (Output)**: Aumentados significativamente para aprovechar al máximo la capacidad de los modelos DeepSeek.
+  - `DeepSeek Chat`: De 4k a **8k** tokens.
+  - `DeepSeek Reasoner`: De 16k a **64k** tokens.
+- **Documentación**: Actualizados `README.md` y `MODELS.md` con los nuevos límites y configuración recomendada para OpenCode.
+
 ## [1.2.0] - 2026-02-09
 
 ### Removed

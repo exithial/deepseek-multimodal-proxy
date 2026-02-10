@@ -18,10 +18,29 @@ class DeepSeekService {
       process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com/v1";
     this.timeout = parseInt(process.env.DEEPSEEK_TIMEOUT_MS || "30000");
 
+    // Límites de tokens
+    this.contextWindowChat = parseInt(
+      process.env.DEEPSEEK_CONTEXT_WINDOW_CHAT || "100000",
+    );
+    this.contextWindowReasoner = parseInt(
+      process.env.DEEPSEEK_CONTEXT_WINDOW_REASONER || "100000",
+    );
+    this.maxOutputChat = parseInt(
+      process.env.DEEPSEEK_MAX_OUTPUT_CHAT || "8000",
+    );
+    this.maxOutputReasoner = parseInt(
+      process.env.DEEPSEEK_MAX_OUTPUT_REASONER || "64000",
+    );
+
     if (!this.apiKey) {
       throw new Error("DEEPSEEK_API_KEY no configurado en .env");
     }
   }
+
+  private contextWindowChat: number;
+  private contextWindowReasoner: number;
+  private maxOutputChat: number;
+  private maxOutputReasoner: number;
 
   /**
    * Mapea el modelo del proxy al modelo destino
@@ -50,7 +69,7 @@ class DeepSeekService {
    */
   private truncateMessages(
     messages: ChatMessage[],
-    maxContextTokens: number = 100000,
+    maxContextTokens: number,
   ): ChatMessage[] {
     const estimateTokens = (text: string | null) =>
       Math.ceil((text || "").length / 3);
@@ -126,23 +145,23 @@ class DeepSeekService {
   }
 
   /**
-   * Maneja las completiones de Ollama
-   */
-
-  /**
-   * Forward del request a DeepSeek o Ollama (sin streaming)
+   * Forward del request a DeepSeek (sin streaming)
    */
   async chatCompletion(
     request: ChatCompletionRequest,
   ): Promise<ChatCompletionResponse> {
     const mapped = this.mapModel(request.model);
 
-    // Enrutar a Ollama si es un modelo local
-
-    logger.info(`→ Forwarding to DeepSeek (model: ${mapped.model})`);
+    const isReasoner = mapped.model === "deepseek-reasoner";
+    const contextWindow = isReasoner
+      ? this.contextWindowReasoner
+      : this.contextWindowChat;
 
     const validMessages = this.prepareMessages(request.messages);
-    const truncatedMessages = this.truncateMessages(validMessages, 100000);
+    const truncatedMessages = this.truncateMessages(
+      validMessages,
+      contextWindow,
+    );
 
     const payload: any = {
       model: mapped.model,
@@ -158,7 +177,10 @@ class DeepSeekService {
       payload.temperature = request.temperature;
     if (request.top_p !== undefined) payload.top_p = request.top_p;
 
-    const maxOutputTokens = mapped.model === "deepseek-reasoner" ? 16000 : 4000;
+    const maxOutputTokens =
+      mapped.model === "deepseek-reasoner"
+        ? this.maxOutputReasoner
+        : this.maxOutputChat;
     const requestedMaxTokens = request.max_tokens || maxOutputTokens;
     payload.max_tokens = Math.min(requestedMaxTokens, maxOutputTokens);
 
@@ -187,7 +209,7 @@ class DeepSeekService {
   }
 
   /**
-   * Forward del request a DeepSeek o Ollama con streaming (SSE)
+   * Forward del request a DeepSeek con streaming (SSE)
    */
   async chatCompletionStream(
     request: ChatCompletionRequest,
@@ -197,14 +219,20 @@ class DeepSeekService {
   ): Promise<void> {
     const mapped = this.mapModel(request.model);
 
-    // Enrutar a Ollama si es un modelo local
-
     logger.info(
       `→ Forwarding to DeepSeek (model: ${mapped.model}, streaming: true)`,
     );
 
+    const isReasoner = mapped.model === "deepseek-reasoner";
+    const contextWindow = isReasoner
+      ? this.contextWindowReasoner
+      : this.contextWindowChat;
+
     const validMessages = this.prepareMessages(request.messages);
-    const truncatedMessages = this.truncateMessages(validMessages, 100000);
+    const truncatedMessages = this.truncateMessages(
+      validMessages,
+      contextWindow,
+    );
 
     const payload: any = {
       model: mapped.model,
@@ -220,7 +248,10 @@ class DeepSeekService {
       payload.temperature = request.temperature;
     if (request.top_p !== undefined) payload.top_p = request.top_p;
 
-    const maxOutputTokens = mapped.model === "deepseek-reasoner" ? 16000 : 4000;
+    const maxOutputTokens =
+      mapped.model === "deepseek-reasoner"
+        ? this.maxOutputReasoner
+        : this.maxOutputChat;
     const requestedMaxTokens = request.max_tokens || maxOutputTokens;
     payload.max_tokens = Math.min(requestedMaxTokens, maxOutputTokens);
 
