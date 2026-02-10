@@ -7,9 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-02-10
+
+### Added
+
+- **Multimodalidad Completa**: Soporte nativo para audio y video usando Gemini 2.5 Flash Lite.
+- **Routing Inteligente**: Nuevo sistema de detección (`multimodalDetector.ts`) que clasifica contenido en 8 tipos (incluyendo soporte robusto para Data URIs/Base64).
+- **Suite de Pruebas Maestra**: Nuevo script `test/test-master.js` para validación automatizada de todas las trayectorias de routing (Text, Image, Audio, Video, PDF, Base64, Streaming).
+- **Procesamiento de Documentos**: Soporte para análisis de documentos (Word, Excel, PowerPoint) y PDFs vía Gemini API.
+- **Procesamiento Local de PDF**: Extracción de texto local para PDFs pequeños (<1MB) para velocidad y privacidad.
+- **Validación Proactiva**: Peticiones HEAD para validar tamaño de archivos (>50MB) antes de iniciar descargas.
+
+### Fixed
+
+- **Base64 Detection**: Corregido problema de routing donde las imágenes en Base64 se enviaban directamente a DeepSeek en lugar de Gemini.
+- **Streaming Consistency**: Mejora en el cierre de streams SSE para asegurar compatibilidad total con el cliente de OpenCode.
+- **Tipado TypeScript**: Actualizadas interfaces de `MessageContent` para incluir `input_audio` y otros tipos multimodales.
+
+### Changed
+
+- **Identidad del Proxy**: Renombrado de "Vision Proxy" a "Multimodal Proxy" para reflejar nuevas capacidades.
+- **Integración Gemini**: Actualizado `geminiService.ts` para manejar múltiples tipos de contenido más allá de imágenes.
+- **Lógica de Routing**: El passthrough a DeepSeek ahora es selectivo (solo texto/código), desviando todo el contenido multimedia a Gemini.
+- **Manejo de PDFs**: Implementado sistema híbrido (Local para velocidad/privacidad, Gemini para complejidad/OCR).
+- **Validación de Tamaño**: Implementadas requests HEAD previas a la descarga para rechazar archivos > 50MB tempranamente.
+
+### Documentation
+
+- **Guías**: Actualizados `README.md`, `MODELS.md` y `TESTING.md` con la nueva terminología multimodal.
+- **Ejemplos**: Añadidos casos de uso para audio, video y documentos complejos.
+
 ## [1.2.5] - 2026-02-09
 
 ### Fixed
+
 - **Script de Inicio**: Simplificado `start.sh` para configuración de servicio systemd.
 
 ## [1.2.4] - 2026-02-09

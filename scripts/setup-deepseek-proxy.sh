@@ -1,10 +1,10 @@
 #!/bin/bash
-# Script para configurar e iniciar DeepSeek Vision Proxy con inicio automático
+# Script para configurar e iniciar DeepSeek Multimodal Proxy con inicio automático
 
 set -e  # Detener en caso de error
 
 # Configuración
-PROJECT_DIR="/home/exithial/Proyectos/deepseek-vision-proxy"
+PROJECT_DIR="/home/exithial/Proyectos/deepseek-multimodal-proxy"
 SERVICE_NAME="deepseek-proxy"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 PORT="7777"
@@ -37,7 +37,7 @@ cd "$PROJECT_DIR" || {
     exit 1
 }
 
-log_info "=== Configuración de DeepSeek Vision Proxy ==="
+log_info "=== Configuración de DeepSeek Multimodal Proxy ==="
 
 # Verificar si el proxy ya está funcionando
 log_info "1. Verificando estado actual..."
@@ -175,7 +175,7 @@ fi
 log_info "6. Creando/actualizando servicio systemd..."
 sudo tee "$SERVICE_FILE" > /dev/null << EOF
 [Unit]
-Description=DeepSeek Vision Proxy
+Description=DeepSeek Multimodal Proxy
 After=network.target
 Requires=network.target
 
@@ -184,18 +184,13 @@ Type=simple
 User=$USER
 WorkingDirectory=$PROJECT_DIR
 
-# Configurar entorno para nvm
-Environment="NVM_DIR=/home/exithial/.nvm"
 Environment="NODE_ENV=production"
-
-# Ejecutar con bash que cargue nvm
-ExecStart=/bin/bash -c '. /home/exithial/.nvm/nvm.sh && /home/exithial/.nvm/versions/node/v24.13.0/bin/node /home/exithial/Proyectos/deepseek-vision-proxy/dist/index.js'
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/exithial/.nvm/versions/node/v24.13.0/bin"
+ExecStart=/home/exithial/.nvm/versions/node/v24.13.0/bin/node /home/exithial/Proyectos/deepseek-multimodal-proxy/dist/index.js
 
 # Configuración de reinicio
-Restart=always
+Restart=on-failure
 RestartSec=10
-StartLimitIntervalSec=60
-StartLimitBurst=3
 
 # Logs
 StandardOutput=journal
@@ -297,7 +292,7 @@ echo "• Ver logs:        sudo journalctl -u $SERVICE_NAME -f"
 echo "• Reiniciar:       sudo systemctl restart $SERVICE_NAME"
 echo "• Detener:         sudo systemctl stop $SERVICE_NAME"
 echo "• Iniciar:         sudo systemctl start $SERVICE_NAME"
-echo "• Verificar:       ./check-proxy-status.sh"
+echo "• Verificar:       ./scripts/check-proxy-status.sh"
 echo ""
 echo "🌐 ENDPOINTS:"
 echo "============="

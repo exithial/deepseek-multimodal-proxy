@@ -3,7 +3,7 @@
  */
 
 export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant' | 'tool';
+  role: "system" | "user" | "assistant" | "tool";
   content: string | MessageContent[] | null;
   name?: string;
   tool_calls?: ToolCall[];
@@ -12,7 +12,7 @@ export interface ChatMessage {
 
 export interface ToolCall {
   id: string;
-  type: 'function';
+  type: "function";
   function: {
     name: string;
     arguments: string;
@@ -20,12 +20,42 @@ export interface ToolCall {
 }
 
 export interface MessageContent {
-  type: 'text' | 'image_url';
+  type:
+    | "text"
+    | "image_url"
+    | "audio_url"
+    | "video_url"
+    | "document_url"
+    | "image"
+    | "file"
+    | "input_audio";
   text?: string;
   image_url?: {
     url: string;
-    detail?: 'auto' | 'low' | 'high';
+    detail?: "auto" | "low" | "high";
   };
+  audio_url?: {
+    url: string;
+    format?: string;
+  };
+  input_audio?: {
+    data: string;
+    format: string;
+  };
+  video_url?: {
+    url: string;
+    format?: string;
+  };
+  document_url?: {
+    url: string;
+    format?: string;
+  };
+  image?: string | Uint8Array | Buffer | ArrayBuffer | URL;
+  file?: {
+    data: string | Uint8Array | Buffer | ArrayBuffer | URL;
+    mediaType: string;
+  };
+  mediaType?: string;
 }
 
 export interface ChatCompletionRequest {
@@ -47,7 +77,7 @@ export interface ChatCompletionRequest {
 
 export interface ChatCompletionResponse {
   id: string;
-  object: 'chat.completion';
+  object: "chat.completion";
   created: number;
   model: string;
   choices: ChatCompletionChoice[];
@@ -61,13 +91,13 @@ export interface ChatCompletionResponse {
 export interface ChatCompletionChoice {
   index: number;
   message: ChatMessage;
-  finish_reason: 'stop' | 'length' | 'content_filter' | 'tool_calls' | null;
+  finish_reason: "stop" | "length" | "content_filter" | "tool_calls" | null;
   logprobs?: any | null;
 }
 
 export interface ChatCompletionChunk {
   id: string;
-  object: 'chat.completion.chunk';
+  object: "chat.completion.chunk";
   created: number;
   model: string;
   choices: ChatCompletionChunkChoice[];
@@ -76,11 +106,11 @@ export interface ChatCompletionChunk {
 export interface ChatCompletionChunkChoice {
   index: number;
   delta: {
-    role?: 'assistant' | 'tool';
+    role?: "assistant" | "tool";
     content?: string | null;
     tool_calls?: any[];
   };
-  finish_reason: 'stop' | 'length' | 'content_filter' | 'tool_calls' | null;
+  finish_reason: "stop" | "length" | "content_filter" | "tool_calls" | null;
   logprobs?: any | null;
 }
 

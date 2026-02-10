@@ -19,7 +19,7 @@ Este directorio contiene la lógica de negocio core del proxy.
 
 - **Manejo de Completions**: Soporta tanto requests normales como streaming (SSE).
 - **Procesamiento unificado**: Recibe mensajes procesados (imágenes → descripciones de texto).
-- **Mapeo de modelos**: Convierte nombres de proxy a modelos destino (ej: `vision-dsk-chat` → `deepseek-chat`).
+- **Mapeo de modelos**: Convierte nombres de proxy a modelos destino (ej: `deepseek-multimodal-chat` → `deepseek-chat`).
 - **Límites Dinámicos**: Gestiona límites de contexto y salida configurables por entorno.
 
 ### `cacheService.ts`

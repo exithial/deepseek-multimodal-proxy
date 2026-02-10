@@ -11,7 +11,7 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-echo -e "${BLUE}🗑️  Desinstalando DeepSeek Vision Proxy...${NC}"
+echo -e "${BLUE}🗑️  Desinstalando DeepSeek Multimodal Proxy...${NC}"
 echo ""
 
 # Verificar si el usuario tiene permisos sudo
@@ -102,15 +102,15 @@ echo ""
 echo -e "${YELLOW}⚠️  NOTAS IMPORTANTES:${NC}"
 echo "======================="
 echo "• Los archivos del proyecto NO se eliminaron:"
-echo "  ~/Proyectos/deepseek-vision-proxy"
+echo "  ~/Proyectos/deepseek-multimodal-proxy"
 echo ""
 echo "• La configuración de OpenCode NO se modificó:"
 echo "  ~/.config/opencode/opencode.json"
 echo ""
 echo "• Si quieres reinstalar, ejecuta:"
-echo "  ./setup-deepseek-proxy.sh"
+echo "  ./scripts/setup-deepseek-proxy.sh"
 echo ""
 echo "• Para eliminar completamente los archivos del proyecto:"
-echo "  rm -rf ~/Proyectos/deepseek-vision-proxy"
+echo "  rm -rf ~/Proyectos/deepseek-multimodal-proxy"
 echo ""
 echo -e "${GREEN}🎉 Desinstalación completada exitosamente!${NC}"

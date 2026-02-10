@@ -11,7 +11,7 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-echo -e "${BLUE}🔍 Verificando estado de DeepSeek Vision Proxy...${NC}"
+echo -e "${BLUE}🔍 Verificando estado de DeepSeek Multimodal Proxy...${NC}"
 echo ""
 
 # Verificar servicio systemd

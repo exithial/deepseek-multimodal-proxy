@@ -1,5 +1,6 @@
 #!/bin/bash
 # Script para probar inicio manual del proxy
+cd "$(dirname "$0")/.."
 
 echo "🔧 Probando inicio manual del proxy..."
 echo ""
@@ -68,4 +69,4 @@ echo "Para solucionar:"
 echo "1. El script setup-deepseek-proxy.sh ahora identifica correctamente"
 echo "   qué procesos son del proxy y cuáles son de OpenCode"
 echo "2. Solo detendrá los procesos del proxy, no OpenCode"
-echo "3. Puedes ejecutar: ./setup-deepseek-proxy.sh"
+echo "3. Puedes ejecutar: ./scripts/setup-deepseek-proxy.sh"

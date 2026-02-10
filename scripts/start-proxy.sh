@@ -9,4 +9,4 @@ export NVM_DIR="$HOME/.nvm"
 nvm use 24.13.0
 
 # Ejecutar el proxy
-exec node /home/exithial/Proyectos/deepseek-vision-proxy/dist/index.js
+exec node /home/exithial/Proyectos/deepseek-multimodal-proxy/dist/index.js

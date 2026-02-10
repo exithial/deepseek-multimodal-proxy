@@ -17,14 +17,27 @@ export async function processImage(imageSource: string): Promise<ProcessedImage>
   // Caso 1: Base64
   if (imageSource.startsWith('data:image/')) {
     logger.debug('Procesando imagen desde base64');
-    const matches = imageSource.match(/^data:(image\/\w+);base64,(.+)$/);
+    
+    // Regex mejorada para capturar MIME types con parámetros (ej: image/png;charset=utf-8)
+    const matches = imageSource.match(/^data:(image\/[^;]+)(?:;([^;]+))?;base64,(.+)$/);
     if (!matches) {
-      throw new Error('Formato base64 inválido');
+      // Intentar regex más simple para compatibilidad
+      const simpleMatches = imageSource.match(/^data:(image\/[^,]+),base64,(.+)$/);
+      if (!simpleMatches) {
+        throw new Error('Formato base64 inválido');
+      }
+      const [, mimeType, base64Data] = simpleMatches;
+      return {
+        data: Buffer.from(base64Data, 'base64'),
+        mimeType: mimeType.split(';')[0], // Remover parámetros si existen
+        source: 'base64',
+      };
     }
-    const [, mimeType, base64Data] = matches;
+    
+    const [, mimeType, , base64Data] = matches;
     return {
       data: Buffer.from(base64Data, 'base64'),
-      mimeType,
+      mimeType: mimeType.split(';')[0], // Remover parámetros si existen
       source: 'base64',
     };
   }
@@ -36,7 +49,7 @@ export async function processImage(imageSource: string): Promise<ProcessedImage>
       const response = await axios.get(imageSource, {
         responseType: 'arraybuffer',
         timeout: 10000,
-        maxContentLength: parseInt(process.env.MAX_IMAGE_SIZE_MB || '10') * 1024 * 1024,
+        maxContentLength: parseInt(process.env.MAX_FILE_SIZE_MB || '50') * 1024 * 1024,
       });
       
       const mimeType = response.headers['content-type'] || 'image/jpeg';
@@ -82,13 +95,13 @@ export async function processImage(imageSource: string): Promise<ProcessedImage>
 }
 
 /**
- * Valida el tamaño de la imagen
+ * Valida el tamaño del archivo (imágenes, PDFs, audio, video, etc.)
  */
-export function validateImageSize(data: Buffer): void {
-  const maxSize = parseInt(process.env.MAX_IMAGE_SIZE_MB || '10') * 1024 * 1024;
+export function validateFileSize(data: Buffer): void {
+  const maxSize = parseInt(process.env.MAX_FILE_SIZE_MB || '50') * 1024 * 1024;
   if (data.length > maxSize) {
     throw new Error(
-      `Imagen demasiado grande: ${(data.length / 1024 / 1024).toFixed(2)}MB (máximo: ${process.env.MAX_IMAGE_SIZE_MB}MB)`
+      `Archivo demasiado grande: ${(data.length / 1024 / 1024).toFixed(2)}MB (máximo: ${process.env.MAX_FILE_SIZE_MB || '50'}MB)`
     );
   }
 }

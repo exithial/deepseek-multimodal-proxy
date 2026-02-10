@@ -7,6 +7,11 @@ import type {
   ChatMessage,
 } from "../types/openai";
 
+/**
+ * Servicio para interactuar con DeepSeek API.
+ * Parte del "Cerebro" en la arquitectura "Córtex Sensorial".
+ * Maneja texto y código puro, mientras que el contenido multimedia es procesado por Gemini.
+ */
 class DeepSeekService {
   private apiKey: string;
   private baseURL: string;
@@ -18,7 +23,7 @@ class DeepSeekService {
       process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com/v1";
     this.timeout = parseInt(process.env.DEEPSEEK_TIMEOUT_MS || "30000");
 
-    // Límites de tokens
+    // Límites de tokens para modelos DeepSeek
     this.contextWindowChat = parseInt(
       process.env.DEEPSEEK_CONTEXT_WINDOW_CHAT || "100000",
     );
@@ -43,19 +48,18 @@ class DeepSeekService {
   private maxOutputReasoner: number;
 
   /**
-   * Mapea el modelo del proxy al modelo destino
+   * Mapea el modelo del proxy al modelo destino de DeepSeek.
+   * Convierte nombres multimodales del proxy a modelos reales de DeepSeek API.
    */
   private mapModel(proxyModel: string): { target: "deepseek"; model: string } {
-    // Modelos DeepSeek
+    // Modelos DeepSeek - Soporta tanto nombres antiguos como nuevos multimodales
     if (proxyModel.includes("reasoner")) {
       return { target: "deepseek", model: "deepseek-reasoner" };
     }
 
     const deepseekModelMap: Record<string, string> = {
-      "deepseek-vision-chat": "deepseek-chat",
-      "vision-dsk-chat": "deepseek-chat",
-      "deepseek-vision-reasoner": "deepseek-reasoner",
-      "vision-dsk-reasoner": "deepseek-reasoner",
+      "deepseek-multimodal-chat": "deepseek-chat",
+      "deepseek-multimodal-reasoner": "deepseek-reasoner",
     };
 
     return {
@@ -145,10 +149,13 @@ class DeepSeekService {
   }
 
   /**
-   * Forward del request a DeepSeek (sin streaming)
+   * Realiza una llamada a la API de DeepSeek.
+   * Este es el endpoint principal donde DeepSeek procesa el texto enriquecido
+   * con descripciones de contenido multimedia generadas por Gemini.
    */
-  async chatCompletion(
+  async createChatCompletion(
     request: ChatCompletionRequest,
+    messages: ChatMessage[],
   ): Promise<ChatCompletionResponse> {
     const mapped = this.mapModel(request.model);
 

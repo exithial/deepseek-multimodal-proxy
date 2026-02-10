@@ -1,46 +1,117 @@
-🎉 DeepSeek Vision Proxy v1.2.5
+🎉 DeepSeek Multimodal Proxy v1.3.0
 
-📅 Fecha: 09 de Febrero 2026
+📅 Fecha: 10 de Febrero 2026
 
-## 🚀 Qué hay de nuevo
+## 🚀 ¡NUEVO: Multimodalidad Completa!
 
-### 🔧 Mejoras Técnicas
-- **Script de inicio optimizado**: Configuración simplificada para el servicio systemd
-- **Inicio automático mejorado**: Mayor estabilidad en el arranque del sistema
+### 🌟 Lo más destacado
+- **De "Visión" a "Multimodal"**: Ahora soporta **audio, video, documentos y PDFs** además de imágenes
+- **Arquitectura "Córtex Sensorial"**: DeepSeek = Cerebro, Gemini = Sentidos, Proxy = Routing inteligente
+- **Límite aumentado**: De 10MB a **50MB por archivo** (límite oficial de Gemini API)
+- **Servicio del sistema**: Ahora se instala como servicio systemd del sistema (no de usuario)
 
-## 🎯 Para el Usuario Final
+## 🎯 Nuevas Capacidades
 
-### ✅ Listo para usar
-- El proxy ahora se inicia automáticamente como servicio del sistema
-- Configuración simplificada para despliegue en producción
-- Mayor confiabilidad en el arranque automático
+### 🔊 **Audio y Video nativos**
+- ✅ **MP3**: Transcripción y análisis de audio
+- ✅ **MP4**: Descripción y análisis de video  
+- ✅ **Testeado con archivos reales**: Funciona con contenido real de internet
 
-### 🔄 Actualización Automática
-- Si ya tienes el servicio configurado, se actualizará automáticamente
-- No se requiere intervención manual
-- Compatibilidad total con versiones anteriores
+### 📄 **Procesamiento Inteligente de Documentos**
+- ✅ **PDFs**: Sistema híbrido (local para pequeños, Gemini para complejos)
+- ✅ **Word/Excel/PowerPoint**: Análisis profundo con Gemini
+- ✅ **Routing automático**: Detecta 7 tipos de contenido y decide destino óptimo
 
-## 📋 Instrucciones Rápidas
+### 🔧 **Mejoras Técnicas**
+- **Validación HEAD previa**: Detecta archivos > 50MB antes de descargar
+- **Content-Type real**: No confía en extensiones, valida headers HTTP
+- **Caché contextual SHA-256**: Hash único por contenido + pregunta
+- **Manejo de errores informativo**: Feedback claro cuando Gemini bloquea contenido
 
-### Para nuevos usuarios:
-1. Ejecutar `./setup-deepseek-proxy.sh`
-2. El servicio se configurará automáticamente
-3. ¡Listo! El proxy estará disponible en http://localhost:7777
+## 📊 Matriz de Routing Inteligente
 
-### Para usuarios existentes:
-- Reiniciar el servicio: `sudo systemctl restart deepseek-vision-proxy`
-- Verificar estado: `sudo systemctl status deepseek-vision-proxy`
+| Contenido | Ejemplos | Routing | Beneficio |
+|-----------|----------|---------|-----------|
+| **Texto** | "Capital de Francia" | 🚀 DeepSeek directo | Mejor razonamiento |
+| **Código** | `.py`, `.js` | 🚀 DeepSeek directo | Mejor sintaxis |
+| **Imágenes** | `.jpg`, `.png` | 👁️ Gemini → DeepSeek | Mejor OCR/descripción |
+| **Audio** | `.mp3`, `.wav` | 👁️ Gemini → DeepSeek | Transcripción precisa |
+| **Video** | `.mp4`, `.mov` | 👁️ Gemini → DeepSeek | Análisis contextual |
+| **PDFs** | `.pdf` | 🏠 Local/Gemini | Costo cero para pequeños |
+| **Documentos** | `.docx`, `.xlsx` | 👁️ Gemini → DeepSeek | Extracción estructurada |
 
-## 🔧 Detalles Técnicos (Para Desarrolladores)
+## 🛠️ Instalación y Configuración
 
-- **Versión**: 1.2.5 (patch update)
-- **Cambio principal**: Simplificación del script `start.sh` para mejor integración con systemd
-- **Compatibilidad**: Total con OpenCode y clientes OpenAI
+### Instalación Rápida:
+```bash
+cd ~/Proyectos/deepseek-multimodal-proxy
+./scripts/setup-deepseek-proxy.sh
+```
 
----
+### Comandos Útiles:
+```bash
+# Ver estado
+sudo systemctl status deepseek-proxy
 
-✨ **DeepSeek Vision Proxy** - Proxy OpenAI-compatible con visión mediante Google Gemini
-🔗 GitHub: https://github.com/exithial/deepseek-vision-proxy
-📧 Soporte: Issues en GitHub
+# Reiniciar
+sudo systemctl restart deepseek-proxy
 
-¡Gracias por usar DeepSeek Vision Proxy! 🚀
+# Ver logs en tiempo real
+sudo journalctl -u deepseek-proxy -f
+
+# Verificar estado completo
+./scripts/check-proxy-status.sh
+```
+
+### Configuración OpenCode:
+```json
+{
+  "provider": {
+    "deepseek-multimodal": {
+      "name": "DeepSeek Multimodal (Proxy)",
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "baseURL": "http://localhost:7777/v1",
+        "apiKey": "not-needed"
+      },
+      "models": {
+        "deepseek-multimodal-chat": {
+          "name": "deepseek-multimodal-chat",
+          "modalities": ["text", "image", "audio", "video", "document"]
+        },
+        "deepseek-multimodal-reasoner": {
+          "name": "deepseek-multimodal-reasoner", 
+          "modalities": ["text", "image", "audio", "video", "document"]
+        }
+#### **Configuración Recomendada de OpenCode:**
+
+```json
+{
+  "name": "DeepSeek Multimodal",
+  "npm": "@ai-sdk/openai-compatible",
+  "options": {
+    "baseURL": "http://localhost:7777/v1",
+    "apiKey": "not-needed"
+  },
+  "models": {
+    "deepseek-multimodal-chat": {
+      "modalities": ["text", "image", "audio", "video", "pdf"]
+    }
+  }
+}
+```
+
+## 🔄 Migración desde v1.2.x
+
+1. **Renombre**: El proyecto ahora es oficialmente **Multimodal Proxy**.
+2. **Servicio**: Se instala como servicio persistente (`sudo systemctl`).
+3. **Nombres**: Usa `deepseek-multimodal-chat` en tus clientes.
+4. **Capacidad**: El límite por archivo subió de 10MB a 50MB.
+
+## 🎉 ¡Listo para Producción!
+
+**DeepSeek Multimodal Proxy v1.3.0** está listo. Ha superado exitosamente todas las pruebas de la Suite Maestra, garantizando que cada pieza de contenido (sea una imagen en Base64, un audio o un PDF de 10 páginas) sea procesada por el modelo más apto para la tarea.
+
+🔗 **GitHub**: [exithial/deepseek-multimodal-proxy](https://github.com/exithial/deepseek-multimodal-proxy)
+
+**¡Lleva tus modelos DeepSeek al siguiente nivel sensorial!** 🚀

@@ -16,35 +16,39 @@
 
 ## Modelos con Visión
 
-### 🖼️ Visión Unificada con Gemini
+### 🖼️ Modelos Multimodales con Gemini 2.5 Flash Lite
 
- **Todos los modelos** ahora usan **Gemini 2.5 Flash Lite** para análisis de imágenes:
+Todos los modelos ahora usan **Gemini 2.5 Flash Lite** para análisis multimodal avanzado:
 
-- **Procesamiento universal**: Cualquier modelo que pase por el proxy tiene visión habilitada
-- **Análisis de imágenes**: Procesado por Gemini (hasta 10MB por imagen)
-- **Caché contextual**: Hash SHA-256 para evitar llamadas repetidas
-- **Prompt adaptativo**: Se ajusta al contexto de la pregunta del usuario
+- **Procesamiento Universal**: Cualquier modelo que pase por el proxy tiene multimodalidad habilitada.
+- **Análisis de Imágenes**: OCR superior y descripción visual.
+- **Análisis de Audio/Video**: Transcripción y descripción contextual (MP3/MP4 validados).
+- **Soporte de PDFs**: Sistema híbrido. Gemini soporta PDFs nativamente para análisis de tablas/gráficos complejos. El proxy añade procesamiento local para archivos < 1MB por velocidad y costo.
+- **Caché Contextual**: Hash SHA-256(content + pregunta) para evitar llamadas Gemini repetidas.
+- **Límite por archivo**: **50MB** (Con validación HEAD previa para evitar descargas innecesarias).
 
 ### 🔄 Enrutamiento Inteligente
 
 El proxy detecta automáticamente el destino basado en el modelo solicitado:
 
 ```typescript
-// Ejemplo de enrutamiento:
-"vision-dsk-chat"     → DeepSeek API (con visión Gemini)
-"vision-dsk-reasoner" → DeepSeek API (con visión Gemini)
+"deepseek-multimodal-chat"     → DeepSeek Chat (v3.2) + Gemini Percepción
+"deepseek-multimodal-reasoner" → DeepSeek Reasoner (r1) + Gemini Percepción
 ```
 
 ### 📊 Modelos Disponibles en el Proxy
 
-El proxy expone **8 modelos** con visión:
+| Modelo Proxy                   | Modelo Destino      | Contexto (Input) | Salida (Output) | Modalidades                       |
+| :----------------------------- | :------------------ | :--------------- | :-------------- | :-------------------------------- |
+| `deepseek-multimodal-chat`     | `deepseek-chat`     | 100K             | 8K              | ✅ Text, Image, Audio, Video, PDF |
+| `deepseek-multimodal-reasoner` | `deepseek-reasoner` | 100K             | 64K             | ✅ Text, Image, Audio, Video, PDF |
 
-| Tipo                  | Modelos Proxy                                     | Modelo Destino      | Contexto | Output | Visión |
-| --------------------- | ------------------------------------------------- | ------------------- | -------- | ------ | ------ |
-| **DeepSeek Chat**     | `vision-dsk-chat`, `deepseek-vision-chat`         | `deepseek-chat`     | 128K     | 8K     | ✅     |
-| **DeepSeek Reasoner** | `vision-dsk-reasoner`, `deepseek-vision-reasoner` | `deepseek-reasoner` | 128K     | 64K    | ✅     |
+### Configuración de Límites (vía .env)
 
-### Para DeepSeek Chat:
+Los límites son personalizables para adaptarse a las cuotas de tu API de DeepSeek:
+
+- **Chat**: 100,000 contextual / 8,000 generación.
+- **Reasoner**: 100,000 contextual / 64,000 generación.
 
 ```json
 {
