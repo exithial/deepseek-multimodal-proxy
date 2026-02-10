@@ -1,37 +1,46 @@
-🚀 Actualización de DeepSeek Vision Proxy v1.2.4
+🎉 DeepSeek Vision Proxy v1.2.5
 
-¡Hola! Tenemos una mejora importante en el rendimiento del análisis de imágenes.
+📅 Fecha: 09 de Febrero 2026
 
-## 📈 ¿Qué hay de nuevo?
+## 🚀 Qué hay de nuevo
 
-✨ **Análisis de imágenes más rápido**: Hemos actualizado el motor de visión de Gemini 2.5 Flash a la versión "Lite", que ofrece:
-   - ✅ **Respuestas más rápidas** en el procesamiento de imágenes
-   - ✅ **Mismo nivel de precisión** en las descripciones visuales
-   - ✅ **Menor latencia** para una experiencia más fluida
+### 🔧 Mejoras Técnicas
+- **Script de inicio optimizado**: Configuración simplificada para el servicio systemd
+- **Inicio automático mejorado**: Mayor estabilidad en el arranque del sistema
 
-🔄 **Configuración automática**: El proxy ahora viene configurado por defecto con el modelo optimizado, listo para usar desde el primer momento.
+## 🎯 Para el Usuario Final
 
-📚 **Documentación actualizada**: Todas las guías y configuraciones reflejan la nueva versión del modelo.
+### ✅ Listo para usar
+- El proxy ahora se inicia automáticamente como servicio del sistema
+- Configuración simplificada para despliegue en producción
+- Mayor confiabilidad en el arranque automático
 
-## 🎯 Beneficios para ti
+### 🔄 Actualización Automática
+- Si ya tienes el servicio configurado, se actualizará automáticamente
+- No se requiere intervención manual
+- Compatibilidad total con versiones anteriores
 
-- **Experiencia más rápida**: Las imágenes se analizan en menos tiempo
-- **Sin cambios en la calidad**: Misma precisión en las descripciones visuales
-- **Configuración simplificada**: Todo funciona automáticamente
+## 📋 Instrucciones Rápidas
 
-## 🔧 ¿Qué necesitas hacer?
+### Para nuevos usuarios:
+1. Ejecutar `./setup-deepseek-proxy.sh`
+2. El servicio se configurará automáticamente
+3. ¡Listo! El proxy estará disponible en http://localhost:7777
 
-¡Nada! La actualización es automática. Si ya tienes el proxy instalado, simplemente reinícialo para obtener las mejoras.
+### Para usuarios existentes:
+- Reiniciar el servicio: `sudo systemctl restart deepseek-vision-proxy`
+- Verificar estado: `sudo systemctl status deepseek-vision-proxy`
 
-## 📊 Detalles técnicos
+## 🔧 Detalles Técnicos (Para Desarrolladores)
 
-- **Modelo anterior**: gemini-2.5-flash
-- **Modelo nuevo**: gemini-2.5-flash-lite
-- **Tipo de cambio**: Mejora de rendimiento (patch update)
+- **Versión**: 1.2.5 (patch update)
+- **Cambio principal**: Simplificación del script `start.sh` para mejor integración con systemd
+- **Compatibilidad**: Total con OpenCode y clientes OpenAI
 
 ---
 
-**DeepSeek Vision Proxy** - Tu puente inteligente entre DeepSeek y la visión por computadora 🖼️🤖
+✨ **DeepSeek Vision Proxy** - Proxy OpenAI-compatible con visión mediante Google Gemini
+🔗 GitHub: https://github.com/exithial/deepseek-vision-proxy
+📧 Soporte: Issues en GitHub
 
-Fecha de lanzamiento: 09 de Febrero de 2026
-Versión: 1.2.4
+¡Gracias por usar DeepSeek Vision Proxy! 🚀

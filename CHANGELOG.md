@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.5] - 2026-02-09
+
+### Fixed
+- **Script de Inicio**: Simplificado `start.sh` para configuración de servicio systemd.
+
 ## [1.2.4] - 2026-02-09
 
 ### Changed
