@@ -183,7 +183,7 @@ async function init() {
     app.listen(PORT, () => {
       logger.info(`✓ Servidor escuchando en http://localhost:${PORT}`);
       logger.info(
-        `  Vision Model: ${process.env.GEMINI_MODEL || "gemini-2.5-flash"}`,
+        `  Vision Model: ${process.env.GEMINI_MODEL || "gemini-2.5-flash-lite"}`,
       );
     });
   } catch (error) {

@@ -1,5 +1,39 @@
 # Reporte de Pruebas
 
+## Ejecución del 09/02/2026 (Release 1.2.4 - Actualización Gemini 2.5 Flash Lite)
+
+### Resumen
+
+- **Estado General**: ✅ PASSED
+- **Tipo de Prueba**: Verificación Post-Actualización de Modelo
+- **Duración**: ~12s
+- **Fecha/Hora**: 2026-02-09 21:45:00 -03
+
+### Métricas Obligatorias
+
+- **Estado General**: ✅ PASSED
+- **Test Suites**: 1 suite (test-proxy-complete.js)
+- **Total Tests**: 5 verificaciones (4 modelos + Health/Imagen)
+- **Cobertura Funcional**: 100% core validado
+
+### Cambios Verificados
+
+- **Modelo Gemini**: Actualizado de `gemini-2.5-flash` a `gemini-2.5-flash-lite`
+- **Configuración**: `.env`, `.env.example`, `src/services/geminiService.ts` actualizados
+- **Documentación**: `README.md`, `MODELS.md`, `CHANGELOG.md` sincronizados
+- **Versión**: Actualizada a `1.2.4` en `package.json`
+
+### Resultados de Ejecución
+
+```bash
+$ node test-proxy-complete.js
+✅ Health check: OK (Version: 1.2.4)
+✅ Modelos disponibles (4): vision-dsk-chat, vision-dsk-reasoner...
+🧪 Probando modelos... OK
+🖼️ Probando detección de imágenes... OK
+🎉 Pruebas completadas!
+```
+
 ## Ejecución del 09/02/2026 (Release 1.2.3 - Sincronización de Versión)
 
 ### Resumen

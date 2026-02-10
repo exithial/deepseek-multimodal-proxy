@@ -1,10 +1,10 @@
 # DeepSeek Vision Proxy (Gemini + Ollama Edition)
 
-Proxy HTTP OpenAI-compatible que añade capacidades de visión a DeepSeek utilizando **Google Gemini 2.5 Flash** para el análisis de imágenes.
+Proxy HTTP OpenAI-compatible que añade capacidades de visión a DeepSeek utilizando **Google Gemini 2.5 Flash Lite** para el análisis de imágenes.
 
 ## 🎯 Características
 
-- ✅ **Visión por Gemini 2.5 Flash**: Análisis de imágenes ultra-rápido y preciso.
+- ✅ **Visión por Gemini 2.5 Flash Lite**: Análisis de imágenes ultra-rápido y preciso.
 - ✅ **Prompting Contextual**: El análisis de la imagen se adapta inteligentemente a la pregunta del usuario.
 - ✅ **Detección multiformato**: Soporta Base64, URLs y archivos locales.
 - ✅ **Caché Inteligente**: Hash contextual SHA-256 para evitar llamadas repetidas a la API (TTL configurable).
@@ -72,7 +72,7 @@ LOG_LEVEL=info
 GEMINI_API_KEY=tu_api_key_de_google_aistudio
 
 # Configuración del Modelo
-GEMINI_MODEL=gemini-2.5-flash
+GEMINI_MODEL=gemini-2.5-flash-lite
 
 # DeepSeek API (opcional, para modelos en la nube)
 DEEPSEEK_API_KEY=sk-tu-api-key-aqui

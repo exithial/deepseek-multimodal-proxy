@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.4] - 2026-02-09
+
+### Changed
+
+- **Modelo Gemini Actualizado**: Cambiado de `gemini-2.5-flash` a `gemini-2.5-flash-lite` para análisis de imágenes más rápido y eficiente.
+- **Configuración por Defecto**: Actualizados `.env.example` y `.env` con el nuevo modelo por defecto.
+- **Documentación**: Actualizado `MODELS.md` para reflejar el cambio de modelo.
+
 ## [1.2.3] - 2026-02-09
 
 ### Fixed

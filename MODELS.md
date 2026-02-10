@@ -18,7 +18,7 @@
 
 ### 🖼️ Visión Unificada con Gemini
 
-**Todos los modelos** ahora usan **Gemini 2.5 Flash** para análisis de imágenes:
+ **Todos los modelos** ahora usan **Gemini 2.5 Flash Lite** para análisis de imágenes:
 
 - **Procesamiento universal**: Cualquier modelo que pase por el proxy tiene visión habilitada
 - **Análisis de imágenes**: Procesado por Gemini (hasta 10MB por imagen)

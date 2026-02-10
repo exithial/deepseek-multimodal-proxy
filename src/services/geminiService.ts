@@ -11,7 +11,7 @@ class GeminiService {
   private apiKey: string | null = null;
 
   constructor() {
-    this.model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+    this.model = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
     this.visionPrompt = process.env.VISION_PROMPT || 
       'Analyze this image thoroughly and describe what you see in detail. Include all relevant information: text (if any), visual elements, composition, colors, objects, people, interface elements, or any other notable features. Be precise and comprehensive.';
   }

@@ -1,11 +1,37 @@
-v1.1.1 - Mejoras de Compatibilidad y Experiencia de Usuario
+🚀 Actualización de DeepSeek Vision Proxy v1.2.4
 
-✨ **Compatibilidad con OpenCode**: Solucionamos problemas de conexión para que el modelo qwen2.5:7b-instruct funcione perfectamente en tu entorno de desarrollo.
+¡Hola! Tenemos una mejora importante en el rendimiento del análisis de imágenes.
 
-🐛 **Corrección de Streaming**: Arreglamos un problema donde los mensajes desaparecían después de recibir respuestas, ahora la conversación fluye sin interrupciones.
+## 📈 ¿Qué hay de nuevo?
 
-⚡ **Optimización de Modelos**: Simplificamos la configuración manteniendo solo el modelo más eficiente (qwen2.5:7b-instruct) para un rendimiento óptimo.
+✨ **Análisis de imágenes más rápido**: Hemos actualizado el motor de visión de Gemini 2.5 Flash a la versión "Lite", que ofrece:
+   - ✅ **Respuestas más rápidas** en el procesamiento de imágenes
+   - ✅ **Mismo nivel de precisión** en las descripciones visuales
+   - ✅ **Menor latencia** para una experiencia más fluida
 
-🎯 **Mejoras Técnicas**: Implementamos mejoras internas que garantizan respuestas más consistentes y confiables en todas las interacciones.
+🔄 **Configuración automática**: El proxy ahora viene configurado por defecto con el modelo optimizado, listo para usar desde el primer momento.
 
-¡Gracias por usar DeepSeek Vision Proxy!
+📚 **Documentación actualizada**: Todas las guías y configuraciones reflejan la nueva versión del modelo.
+
+## 🎯 Beneficios para ti
+
+- **Experiencia más rápida**: Las imágenes se analizan en menos tiempo
+- **Sin cambios en la calidad**: Misma precisión en las descripciones visuales
+- **Configuración simplificada**: Todo funciona automáticamente
+
+## 🔧 ¿Qué necesitas hacer?
+
+¡Nada! La actualización es automática. Si ya tienes el proxy instalado, simplemente reinícialo para obtener las mejoras.
+
+## 📊 Detalles técnicos
+
+- **Modelo anterior**: gemini-2.5-flash
+- **Modelo nuevo**: gemini-2.5-flash-lite
+- **Tipo de cambio**: Mejora de rendimiento (patch update)
+
+---
+
+**DeepSeek Vision Proxy** - Tu puente inteligente entre DeepSeek y la visión por computadora 🖼️🤖
+
+Fecha de lanzamiento: 09 de Febrero de 2026
+Versión: 1.2.4
