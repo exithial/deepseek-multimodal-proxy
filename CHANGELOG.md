@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-02-09
+
+### Removed
+
+- **Soporte Ollama**: Eliminada completamente la integración con Ollama. El proxy ahora es exclusivamente para DeepSeek con visión Gemini.
+- **Modelos Locales**: Eliminados, ya no se redirigen peticiones a instancias locales.
+
 ## [1.1.1] - 2026-02-08
 
 ### Fixed

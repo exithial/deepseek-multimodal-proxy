@@ -1,40 +1,40 @@
 # DeepSeek Vision Proxy (Gemini + Ollama Edition)
 
-Proxy HTTP OpenAI-compatible que añade capacidades de visión a DeepSeek utilizando **Google Gemini 2.5 Flash** para el análisis de imágenes, y soporta modelos locales de **Ollama** como alternativas.
+Proxy HTTP OpenAI-compatible que añade capacidades de visión a DeepSeek utilizando **Google Gemini 2.5 Flash** para el análisis de imágenes.
 
 ## 🎯 Características
 
 - ✅ **Visión por Gemini 2.5 Flash**: Análisis de imágenes ultra-rápido y preciso.
-- ✅ **Modelos locales Ollama**: Soporte para qwen2.5:7b-instruct (simplificado a un solo modelo local).
 - ✅ **Prompting Contextual**: El análisis de la imagen se adapta inteligentemente a la pregunta del usuario.
 - ✅ **Detección multiformato**: Soporta Base64, URLs y archivos locales.
 - ✅ **Caché Inteligente**: Hash contextual SHA-256 para evitar llamadas repetidas a la API (TTL configurable).
 - ✅ **Streaming SSE**: Respuestas en tiempo real compatibles con clientes OpenAI.
 - ✅ **Zero Overhead**: Passthrough directo si no hay imágenes.
-- ✅ **Enrutamiento inteligente**: Detecta automáticamente si usar DeepSeek API o modelos locales Ollama.
 
 ## 📦 Requisitos
 
 - **Node.js** >= 18.0.0
 - **DeepSeek API Key** (opcional, para modelos en la nube)
 - **Google Gemini API Key** (para visión)
-- **Ollama** >= 0.15.0 (para modelos locales)
 
 ## 🚀 Instalación Rápida
 
 ### Opción 1: Script Automático (Recomendado)
+
 ```bash
 cd /home/exithial/Proyectos/deepseek-vision-proxy
 ./setup-deepseek-proxy.sh
 ```
 
 Esto configurará todo automáticamente:
+
 - Detendrá procesos existentes (sin interrumpir OpenCode)
 - Recompilará el proyecto
 - Creará servicio systemd con inicio automático
 - Verificará que todo funcione correctamente
 
 ### Opción 2: Instalación Manual
+
 ```bash
 # 1. Instalar dependencias
 npm install
@@ -53,6 +53,7 @@ npm start    # Modo producción
 ```
 
 ### Scripts de Gestión Disponibles:
+
 - `./setup-deepseek-proxy.sh` - Configuración completa
 - `./check-proxy-status.sh` - Verificación de estado
 - `./uninstall-proxy.sh` - Desinstalación completa
@@ -76,9 +77,7 @@ GEMINI_MODEL=gemini-2.5-flash
 # DeepSeek API (opcional, para modelos en la nube)
 DEEPSEEK_API_KEY=sk-tu-api-key-aqui
 
-# Ollama (para modelos locales)
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_TIMEOUT_MS=60000
+
 
 # Caché (Recomendado)
 CACHE_ENABLED=true
@@ -88,6 +87,7 @@ CACHE_TTL_DAYS=7
 ## 🔌 Integración con OpenCode
 
 ### Configuración Simplificada (Recomendada)
+
 Agrega esto a tu `~/.config/opencode/opencode.json`:
 
 ```json
@@ -112,22 +112,12 @@ Agrega esto a tu `~/.config/opencode/opencode.json`:
             "output": ["text"]
           }
         },
+        },
         "vision-dsk-reasoner": {
           "name": "vision-dsk-reasoner",
           "limit": {
             "context": 128000,
             "output": 64000
-          },
-          "modalities": {
-            "input": ["text", "image"],
-            "output": ["text"]
-          }
-        },
-        "qwen2.5:7b-instruct": {
-          "name": "qwen2.5:7b-instruct",
-          "limit": {
-            "context": 131072,
-            "output": 8192
           },
           "modalities": {
             "input": ["text", "image"],
@@ -140,7 +130,7 @@ Agrega esto a tu `~/.config/opencode/opencode.json`:
 }
 ```
 
-**Nota:** Esta configuración incluye solo 3 modelos principales con visión habilitada para todos. El proxy expone 8 modelos (4 DeepSeek + 4 qwen2.5:7b-instruct con diferentes alias), pero OpenCode usa esta selección simplificada.
+**Nota:** Esta configuración incluye solo modelos principales con visión habilitada para todos.
 
 ## 🔄 Flujo de Trabajo
 
@@ -164,6 +154,7 @@ El proxy soporta completamente las herramientas de OpenAI (`tools` y `tool_choic
 - **Streaming**: Soporta herramientas tanto en modo streaming como no-streaming.
 
 ### Ejemplo de uso con herramientas:
+
 ```json
 {
   "model": "vision-dsk-chat",
@@ -175,12 +166,12 @@ El proxy soporta completamente las herramientas de OpenAI (`tools` y `tool_choic
 
 ## 📊 Endpoints
 
-| Endpoint | Método | Descripción |
-|----------|--------|-------------|
-| `/v1/chat/completions` | POST | Chat standard (compatible OpenAI) |
-| `/v1/cache/stats` | GET | Estadísticas de uso del caché |
-| `/v1/models` | GET | Lista de modelos |
-| `/health` | GET | Estado del servicio |
+| Endpoint               | Método | Descripción                       |
+| ---------------------- | ------ | --------------------------------- |
+| `/v1/chat/completions` | POST   | Chat standard (compatible OpenAI) |
+| `/v1/cache/stats`      | GET    | Estadísticas de uso del caché     |
+| `/v1/models`           | GET    | Lista de modelos                  |
+| `/health`              | GET    | Estado del servicio               |
 
 ## 🛠️ Comandos Útiles
 

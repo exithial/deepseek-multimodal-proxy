@@ -32,13 +32,7 @@ async function testProxy() {
       'vision-dsk-chat',
       'vision-dsk-reasoner', 
       'deepseek-vision-chat',
-      'deepseek-vision-reasoner',
-      'qwen2.5-instruct',
-      'qwen2.5-7b-instruct',
-      'deepseek-coder-instruct',
-      'deepseek-coder-6.7b-instruct',
-      'qwen2.5',
-      'deepseek-coder'
+      'deepseek-vision-reasoner'
     ];
 
     for (const model of testModels) {
