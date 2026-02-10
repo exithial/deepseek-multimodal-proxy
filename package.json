@@ -1,6 +1,6 @@
 {
   "name": "deepseek-vision-proxy",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "Proxy OpenAI-compatible que añade visión a DeepSeek mediante Google Gemini",
   "main": "dist/index.js",
   "scripts": {

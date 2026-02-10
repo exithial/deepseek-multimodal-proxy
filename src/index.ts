@@ -9,6 +9,7 @@ import {
 } from "./middleware/imageDetector";
 import type { ChatCompletionRequest, ErrorResponse } from "./types/openai";
 import { getErrorMessage } from "./utils/error";
+import packageJson from "../package.json";
 
 const app = express();
 const PORT = parseInt(process.env.PORT || "7777");
@@ -21,7 +22,7 @@ app.get("/health", (req: Request, res: Response) => {
   res.json({
     status: "ok",
     service: "deepseek-vision-proxy",
-    version: "1.0.0",
+    version: packageJson.version,
     uptime: process.uptime(),
   });
 });
