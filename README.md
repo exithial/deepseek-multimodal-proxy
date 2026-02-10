@@ -31,8 +31,9 @@ Proxy HTTP OpenAI-compatible que implementa **arquitectura "Córtex Sensorial"**
 ### Opción 1: Script Automático (Recomendado)
 
 ```bash
-cd /home/exithial/Proyectos/deepseek-multimodal-proxy
-./scripts/setup-deepseek-proxy.sh
+git clone https://github.com/exithial/deepseek-multimodal-proxy.git
+cd deepseek-multimodal-proxy
+./scripts/setup.sh
 ```
 
 Esto configurará todo automáticamente:
@@ -53,8 +54,8 @@ npm run build
 # 3. Configurar .env
 cp .env.example .env # Y editar con tus claves
 
-# 4. Iniciar servicio
-sudo systemctl enable --now deepseek-proxy
+# 4. Iniciar servicio (vía script unificado)
+./scripts/manage.sh start
 ```
 
 ## 🔌 Integración con OpenCode
@@ -76,14 +77,8 @@ Agrega esto a tu `~/.config/opencode/opencode.json`:
       "models": {
         "deepseek-multimodal-chat": {
           "name": "deepseek-multimodal-chat",
-          "cost": {
-            "input": 0.5,
-            "output": 1.5
-          },
-          "limit": {
-            "context": 100000,
-            "output": 8000
-          },
+          "cost": { "input": 0.5, "output": 1.5 },
+          "limit": { "context": 100000, "output": 8000 },
           "modalities": {
             "input": ["text", "image", "audio", "video", "pdf"],
             "output": ["text"]
@@ -91,14 +86,8 @@ Agrega esto a tu `~/.config/opencode/opencode.json`:
         },
         "deepseek-multimodal-reasoner": {
           "name": "deepseek-multimodal-reasoner",
-          "cost": {
-            "input": 1.0,
-            "output": 3.0
-          },
-          "limit": {
-            "context": 100000,
-            "output": 64000
-          },
+          "cost": { "input": 1.0, "output": 3.0 },
+          "limit": { "context": 100000, "output": 64000 },
           "modalities": {
             "input": ["text", "image", "audio", "video", "pdf"],
             "output": ["text"]
@@ -165,12 +154,6 @@ PDF_LOCAL_PROCESSING=true          # Habilitar procesamiento local para PDFs peq
 PDF_LOCAL_MAX_SIZE_MB=1            # Tamaño máximo para procesamiento local (1MB por defecto)
 ```
 
-#### **Comportamiento por Defecto:**
-
-- **PDFs pequeños (< 1MB)**: Procesamiento local (sin costo API, más rápido)
-- **PDFs grandes (≥ 1MB)**: Gemini (mejor calidad, soporta OCR)
-- **Todo deshabilitado**: Si `PDF_LOCAL_PROCESSING=false`, todo va a Gemini
-
 #### **Ventajas de Cada Opción:**
 
 **Procesamiento Local (PDFs pequeños):**
@@ -178,29 +161,12 @@ PDF_LOCAL_MAX_SIZE_MB=1            # Tamaño máximo para procesamiento local (1
 - ✅ **Sin costo de API** Gemini
 - ✅ **Más rápido** para PDFs de texto simple
 - ✅ **Privacidad**: Datos no salen del servidor
-- ✅ **Control total** sobre el procesamiento
 
 **Gemini (PDFs grandes/complejos):**
 
 - ✅ **Mejor calidad**: Entiende estructura, tablas, gráficos
 - ✅ **OCR integrado**: Soporta PDFs escaneados/imágenes
-- ✅ **Consistencia**: Mismo flujo que otros formatos
-- ✅ **Análisis contextual**: Mejor comprensión del contenido
 - ✅ **Multilenguaje**: Mejor soporte para idiomas diversos
-
-#### **Fallback Automático:**
-
-Si el procesamiento local falla (ej: PDF corrupto, formato complejo), el sistema automáticamente:
-
-1. Detecta el error
-2. Intenta procesamiento con Gemini
-3. Si Gemini también falla, devuelve error informativo
-
-### **Dependencias Locales (para procesamiento opcional):**
-
-- **pdf-parse**: Extracción básica de texto
-- **pdf2json**: Extracción estructurada (fallback)
-- **pdf-lib**: Creación/manipulación de PDFs (testing)
 
 ## 🛡️ Micro-Optimizaciones Críticas
 
@@ -209,7 +175,7 @@ Si el procesamiento local falla (ej: PDF corrupto, formato complejo), el sistema
 ```typescript
 // No confía en extensiones, valida headers HTTP reales
 if (contentType.includes("text/html")) {
-  throw new Error("URL devuelve HTML, no imagen");
+  throw new Error("URL devuelve HTML, no un tipo de archivo válido");
 }
 ```
 
@@ -227,15 +193,14 @@ return `[SISTEMA: Contenido bloqueado por seguridad. Describe verbalmente...]`;
 const cacheKey = sha256(content + userQuestion);
 ```
 
-## 🛠️ Soporte para Herramientas (Tools)
+## �️ Soporte para Herramientas (Tools)
 
 El proxy soporta completamente las herramientas de OpenAI (`tools` y `tool_choice`):
 
 - **Forward transparente**: Tools reenviadas directamente a DeepSeek
 - **Compatible con multimodalidad**: Funciona después del procesamiento Gemini
-- **Streaming**: Soporta tools en modo streaming y batch
 
-## 📊 Endpoints & Métricas
+## �📊 Endpoints & Métricas
 
 | Endpoint               | Método | Descripción                         |
 | ---------------------- | ------ | ----------------------------------- |
@@ -250,61 +215,50 @@ El proxy soporta completamente las herramientas de OpenAI (`tools` y `tool_choic
 - **Validación previa**: HEAD requests detectan archivos > 50MB antes de descargar
 - **Timeout descarga**: **120 segundos** para archivos grandes
 - **Caché TTL**: 7 días (configurable)
-- **Puerto default**: 7777
-- **API compatible**: OpenAI 100%
 - **Formatos soportados**:
   - **Imágenes**: JPEG, PNG, GIF, WebP, BMP, TIFF, SVG
-  - **Audio**: MP3, WAV (testeado con MP3 real)
-  - **Video**: MP4, MOV (testeado con MP4 real)
-  - **Documentos**: PDF (✅ Gemini SÍ soporta), Excel, Word, PowerPoint
-  - **Procesamiento local opcional**: PDFs pequeños (< 1MB) configurable
+  - **Audio**: MP3, WAV
+  - **Video**: MP4, MOV
+  - **Documentos**: PDF, Excel, Word, PowerPoint
 
-## 🛠️ Comandos Útiles
+## 🧪 Pruebas y Gestión
+
+Usa el script unificado `manage.sh` para controlar el proxy:
 
 ```bash
-# Scripts de gestión automática
-./scripts/setup-deepseek-proxy.sh      # Instalación completa
-./scripts/check-proxy-status.sh        # Verificación de estado
-./scripts/uninstall-proxy.sh           # Desinstalación limpia
-
-# Verificación básica
-curl http://localhost:7777/health
-# {"status":"ok","service":"deepseek-multimodal-proxy","version":"1.3.0"}
-
-# Pruebas integrales
-node test/test-complete-multimodal.js
-node test/test-micro-optimizations.js
-
-# Monitoreo en producción
-journalctl -u deepseek-proxy -f  # Logs en tiempo real
-curl http://localhost:7777/v1/cache/stats  # Estadísticas caché
+./scripts/manage.sh start      # Iniciar servicio
+./scripts/manage.sh stop       # Detener servicio
+./scripts/manage.sh status     # Ver estado y salud de la API
+./scripts/manage.sh logs       # Ver logs en tiempo real
+./scripts/manage.sh uninstall  # Eliminar el servicio del sistema
 ```
 
-## ✅ Estado Actual
+Para pruebas rápidas sin instalación:
 
-**Versión 1.3.0 - Listo para Producción**
+```bash
+./scripts/run-local.sh
+```
 
-### **Implementado:**
+**Verificación Integral:**
 
-- ✅ Arquitectura "Córtex Sensorial" completa
-- ✅ Routing inteligente automático (7 tipos de contenido)
-- ✅ Descarga con validación robusta (Content-Type real)
-- ✅ Manejo informativo de filtros seguridad Gemini
-- ✅ Caché contextual SHA-256 eficiente
-- ✅ Backward compatible 100% con OpenAI
-- ✅ Integración completa con OpenCode
-- ✅ **Audio/Video soportados** (MP3/MP4 testeado con archivos reales)
-- ✅ **Límite 50MB** con validación HEAD previa
-- ✅ **PDFs soportados por Gemini** (✅ application/pdf MIME type)
-- ✅ **Procesamiento local opcional** para PDFs pequeños
+```bash
+node test/test-master.js
+```
 
-### **Beneficios Clave:**
+## ✅ Estado Actual - Versión 1.3.1
 
-1. **Unificación**: Un proxy para todos los contenidos
-2. **Calidad**: Cada modelo hace lo que mejor sabe
-3. **Consistencia**: Mismo procesamiento para URLs/Base64
-4. **Robustez**: No se rompe silenciosamente
-5. **Eficiencia**: Caché reduce costos y latencia
+- ✅ **Arquitectura "Córtex Sensorial"** completa
+- ✅ **Routing inteligente automático** (7 tipos de contenido)
+- ✅ **Descarga con validación robusta** (Content-Type real)
+- ✅ **Caché contextual SHA-256** eficiente
+- ✅ **Audio/Video soportados** (MP3/MP4 testeados)
+- ✅ **PDFs soportados** vía Gemini o localmente
+
+## ☕ Soporte y Café
+
+Si encuentras útil este proxy y quieres apoyar el desarrollo de más herramientas de código abierto, ¡puedes invitarme a un café!
+
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Donate-orange?style=for-the-badge&logo=buy-me-a-coffee)](https://buymeacoffee.com/exithial)
 
 ## 📝 Licencia
 

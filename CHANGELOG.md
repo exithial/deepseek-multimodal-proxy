@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-02-10
+
+### Added
+
+- **Unificación de Scripts**: Consolidación de múltiples scripts de gestión en `manage.sh` (start, stop, status, logs, uninstall).
+- **Setup Simplificado**: El instalador principal ahora es `setup.sh` (anteriormente `setup-deepseek-proxy.sh`).
+- **Integración NPM**: Nuevos comandos rápidos en `package.json` (`npm run setup`, `npm run status`, `npm run proxy:*`).
+
+### Fixed
+
+- **Persistencia de Servicio**: Corregida la detección de rutas reales de Node para evitar fallos por rutas temporales de Yarn en el servicio systemd (Error 203/EXEC).
+
 ## [1.3.0] - 2026-02-10
 
 ### Added

@@ -1,13 +1,22 @@
 {
   "name": "deepseek-multimodal-proxy",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "Proxy OpenAI-compatible que añade capacidades multimodales a DeepSeek mediante Google Gemini",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "setup": "./scripts/setup.sh",
+    "status": "./scripts/manage.sh status",
+    "proxy:start": "./scripts/manage.sh start",
+    "proxy:stop": "./scripts/manage.sh stop",
+    "proxy:restart": "./scripts/manage.sh restart",
+    "proxy:logs": "./scripts/manage.sh logs",
+    "proxy:local": "./scripts/run-local.sh",
+    "proxy:uninstall": "./scripts/manage.sh uninstall",
+    "test:master": "node test/test-master.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
