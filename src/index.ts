@@ -3,6 +3,7 @@ import express, { Request, Response } from "express";
 import { logger } from "./utils/logger";
 import { cacheService } from "./services/cacheService";
 import { deepseekService } from "./services/deepseekService";
+import { geminiService } from "./services/geminiService";
 import { processMultimodalContent } from "./middleware/multimodalProcessor";
 import { anthropicAdapter } from "./services/anthropicAdapter";
 import type {
@@ -64,6 +65,10 @@ function stableStringify(value: any): string {
     (key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`,
   );
   return `{${entries.join(",")}}`;
+}
+
+function getModelRoutingStrategy(model: string): "gemini-direct" | "deepseek-routing" {
+  return model === "haiku" ? "gemini-direct" : "deepseek-routing";
 }
 
 function getAnthropicRequestKey(request: AnthropicRequest): string {
@@ -291,10 +296,21 @@ app.post("/v1/chat/completions", async (req: Request, res: Response) => {
 
     if (strategy === "gemini-direct") {
       const assistantMessage = processedMessages[0];
-      const content =
-        typeof assistantMessage?.content === "string"
-          ? assistantMessage.content
-          : JSON.stringify(assistantMessage?.content ?? "");
+      let content = "";
+      if (assistantMessage?.content) {
+        if (typeof assistantMessage.content === "string") {
+          content = assistantMessage.content;
+        } else if (Array.isArray(assistantMessage.content)) {
+          const textParts = assistantMessage.content
+            .filter((part: any) => part.type === "text" && part.text)
+            .map((part: any) => part.text)
+            .join("\n\n");
+          content = textParts || JSON.stringify(assistantMessage.content);
+        } else {
+          content = JSON.stringify(assistantMessage.content);
+        }
+      }
+      content = content || "";
 
       if (request.stream) {
         res.setHeader("Content-Type", "text/event-stream");
@@ -508,23 +524,43 @@ app.post("/v1/messages", async (req: Request, res: Response) => {
     const openaiRequest = anthropicAdapter.anthropicToInternal(anthropicRequest);
     const internalModel = openaiRequest.model;
 
-    const { processedMessages, useDeepseekDirectly, strategy } =
-      await processMultimodalContent(
-        openaiRequest.messages,
-        openaiRequest.model,
-      );
+    const modelRoutingStrategy = getModelRoutingStrategy(originalModel);
+    logger.info(
+      `Routing por modelo: ${originalModel} → ${modelRoutingStrategy}`,
+    );
 
-    res.setHeader("X-Multimodal-Strategy", strategy);
+    let processedMessages = openaiRequest.messages;
+    let strategy: "gemini-direct" | "direct" | "gemini" | "mixed" | "local" = "direct";
+    let useDeepseekDirectly = true;
 
-    if (useDeepseekDirectly) {
+    if (modelRoutingStrategy === "gemini-direct") {
+      strategy = "gemini-direct";
+      const geminiResponse = await geminiService.generateDirectResponse(openaiRequest.messages);
+      processedMessages = [
+        {
+          role: "assistant",
+          content: geminiResponse,
+        },
+      ];
+      useDeepseekDirectly = false;
       logger.info(
-        `OK Contenido soportado por modelo interno - Passthrough directo | request_id: ${requestId} | internal: ${internalModel}`,
+        `Haiku: Todo va a Gemini-direct | request_id: ${requestId}`,
       );
     } else {
+      const { processedMessages: pm, useDeepseekDirectly: useDS, strategy: st } =
+        await processMultimodalContent(
+          openaiRequest.messages,
+          openaiRequest.model,
+        );
+      processedMessages = pm;
+      useDeepseekDirectly = useDS;
+      strategy = st;
       logger.info(
-        `OK Contenido procesado (${strategy}) - Enrutando a modelo interno | request_id: ${requestId} | internal: ${internalModel}`,
+        `${originalModel}: Routing interno (${strategy}) | request_id: ${requestId}`,
       );
     }
+
+    res.setHeader("X-Multimodal-Strategy", strategy);
 
     const processedRequest: ChatCompletionRequest = {
       ...openaiRequest,
@@ -542,12 +578,23 @@ app.post("/v1/messages", async (req: Request, res: Response) => {
 
       const requestId = randomUUID();
 
-      if (strategy === "gemini-direct") {
-        const assistantMessage = processedMessages[0];
-        const content =
-          typeof assistantMessage?.content === "string"
-            ? assistantMessage.content
-            : JSON.stringify(assistantMessage?.content ?? "");
+    if (strategy === "gemini-direct") {
+      const assistantMessage = processedMessages[0];
+      let content = "";
+      if (assistantMessage?.content) {
+        if (typeof assistantMessage.content === "string") {
+          content = assistantMessage.content;
+        } else if (Array.isArray(assistantMessage.content)) {
+          const textParts = assistantMessage.content
+            .filter((part: any) => part.type === "text" && part.text)
+            .map((part: any) => part.text)
+            .join("\n\n");
+          content = textParts || JSON.stringify(assistantMessage.content);
+        } else {
+          content = JSON.stringify(assistantMessage.content);
+        }
+      }
+      content = content || "";
 
         const openaiStream = createOpenAIStreamFromText(
           content,
@@ -639,10 +686,21 @@ app.post("/v1/messages", async (req: Request, res: Response) => {
 
     if (strategy === "gemini-direct") {
       const assistantMessage = processedMessages[0];
-      const content =
-        typeof assistantMessage?.content === "string"
-          ? assistantMessage.content
-          : JSON.stringify(assistantMessage?.content ?? "");
+      let content = "";
+      if (assistantMessage?.content) {
+        if (typeof assistantMessage.content === "string") {
+          content = assistantMessage.content;
+        } else if (Array.isArray(assistantMessage.content)) {
+          const textParts = assistantMessage.content
+            .filter((part: any) => part.type === "text" && part.text)
+            .map((part: any) => part.text)
+            .join("\n\n");
+          content = textParts || JSON.stringify(assistantMessage.content);
+        } else {
+          content = JSON.stringify(assistantMessage.content);
+        }
+      }
+      content = content || "";
       const openaiResponse = createOpenAIResponseFromText(
         content,
         openaiRequest.model,

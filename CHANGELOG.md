@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-02-11
+
+### Added
+
+- **Routing Inteligente por Modelo**: Nueva función `getModelRoutingStrategy()` que enruta automáticamente `haiku` → `gemini-direct` y otros modelos → `deepseek-routing`.
+- **Soporte Extendido de Tipos de Contenido**: Adición de tipos `input_audio`, `clipboard`, `file` en el adaptador Anthropic para compatibilidad completa con Claude Code.
+- **Validación de Contenido Vacío**: Mejora en el manejo de texto vacío en el adaptador Anthropic para evitar errores de procesamiento.
+
+### Changed
+
+- **Optimización de Routing para Haiku**: Modelo `haiku` ahora usa estrategia `gemini-direct` para respuestas más rápidas, bypass total de DeepSeek.
+- **Manejo Mejorado de Contenido Multimodal**: Procesamiento más robusto de arrays de contenido en estrategia `gemini-direct`.
+- **Cache Diferenciada por Modelo**: Sistema de cache ahora distingue entre modelos para evitar contaminación cruzada.
+
+### Fixed
+
+- **Compatibilidad con Tipos de Contenido Claude**: Corrección en el adaptador Anthropic para manejar correctamente `input_audio`, `clipboard` y `file` con datos Base64.
+- **Procesamiento de Texto Vacío**: Evita errores cuando el contenido de mensajes assistant está vacío en estrategia `gemini-direct`.
+
 ## [1.4.0] - 2026-02-11
 
 ### Added

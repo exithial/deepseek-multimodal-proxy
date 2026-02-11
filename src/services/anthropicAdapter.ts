@@ -121,10 +121,12 @@ class AnthropicAdapter {
 
     for (const block of content) {
       if (block.type === "text") {
-        openaiContent.push({
-          type: "text",
-          text: block.text!,
-        });
+        if (block.text) {
+          openaiContent.push({
+            type: "text",
+            text: block.text,
+          });
+        }
       } else if (block.type === "image") {
         if (block.source) {
           if (block.source.type === "base64") {
@@ -142,6 +144,13 @@ class AnthropicAdapter {
               },
             });
           }
+        } else if (block.url) {
+          openaiContent.push({
+            type: "image_url",
+            image_url: {
+              url: block.url,
+            },
+          });
         }
       } else if (block.type === "audio_url") {
         if (block.url) {
@@ -173,7 +182,52 @@ class AnthropicAdapter {
             },
           });
         }
+      } else if (block.type === "input_audio") {
+        if (block.url || (block as any).data) {
+          const audioData = (block as any).data || block.url;
+          const audioFormat = block.format || "mp3";
+          openaiContent.push({
+            type: "audio_url",
+            audio_url: {
+              url: audioData,
+              format: audioFormat,
+            },
+          });
+        }
+      } else if (block.type === "clipboard") {
+        if ((block as any).data) {
+          const clipboardData = (block as any).data;
+          if (typeof clipboardData === "string" && clipboardData.startsWith("data:image")) {
+            openaiContent.push({
+              type: "image_url",
+              image_url: {
+                url: clipboardData,
+              },
+            });
+          }
+        }
+      } else if ((block as any).type === "image" && (block as any).data) {
+        const imageData = (block as any).data;
+        if (typeof imageData === "string" && imageData.startsWith("data:image")) {
+          openaiContent.push({
+            type: "image_url",
+            image_url: {
+              url: imageData,
+            },
+          });
+        } else if (typeof imageData === "string") {
+          openaiContent.push({
+            type: "image_url",
+            image_url: {
+              url: imageData,
+            },
+          });
+        }
       }
+    }
+
+    if (openaiContent.length === 0) {
+      return "";
     }
 
     if (openaiContent.length === 1 && openaiContent[0].type === "text") {

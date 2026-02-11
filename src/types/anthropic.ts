@@ -21,7 +21,10 @@ export interface AnthropicContentBlock {
     | "document_url"
     | "tool_use"
     | "tool_result"
-    | "thinking";
+    | "thinking"
+    | "input_audio"
+    | "clipboard"
+    | "file";
   text?: string;
   source?: {
     type: "base64" | "url";
@@ -37,6 +40,11 @@ export interface AnthropicContentBlock {
   content?: string | AnthropicContentBlock[];
   is_error?: boolean;
   thinking?: string;
+  data?: string;
+  file?: {
+    data: string;
+    mediaType?: string;
+  };
 }
 
 export interface AnthropicRequest {

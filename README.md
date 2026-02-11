@@ -136,9 +136,20 @@ Tambien puedes configurar `.claude/settings.json`:
 
 Modelos disponibles para Claude Code:
 
-- `haiku` → gemini-direct (rápido/económico)
-- `sonnet` → deepseek-multimodal-chat
-- `opus` → deepseek-multimodal-reasoner
+- `haiku` → **gemini-direct** (rápido/económico, bypass total de DeepSeek)
+- `sonnet` → **deepseek-multimodal-chat** (routing inteligente por contenido)
+- `opus` → **deepseek-multimodal-reasoner** (routing inteligente por contenido)
+
+### **Routing Inteligente por Modelo**
+
+El proxy implementa routing automático basado en el modelo:
+
+- **Haiku**: Todo va a `gemini-direct` para máxima velocidad
+- **Sonnet/Opus**: Routing inteligente según tipo de contenido:
+  - **Texto/código** → DeepSeek directo
+  - **Imágenes/audio/video** → Gemini → DeepSeek
+  - **PDFs pequeños** → Procesamiento local → DeepSeek
+  - **PDFs grandes** → Gemini → DeepSeek
 
 ## 🔄 Flujo de Trabajo "Córtex Sensorial"
 
@@ -286,10 +297,11 @@ Para pruebas rápidas sin instalación:
 node test/test-master.js
 ```
 
-## ✅ Estado Actual - Versión 1.3.1
+## ✅ Estado Actual - Versión 1.5.0
 
 - ✅ **Arquitectura "Córtex Sensorial"** completa
-- ✅ **Routing inteligente automático** (7 tipos de contenido)
+- ✅ **Routing inteligente por modelo** (haiku → gemini-direct, sonnet/opus → deepseek-routing)
+- ✅ **Soporte completo Claude Code** con tipos de contenido extendidos (input_audio, clipboard, file)
 - ✅ **Descarga con validación robusta** (Content-Type real)
 - ✅ **Caché contextual SHA-256** eficiente
 - ✅ **Audio/Video soportados** (MP3/MP4 testeados)

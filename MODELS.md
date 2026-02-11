@@ -47,11 +47,19 @@ El proxy detecta automáticamente el destino basado en el modelo solicitado:
 
 Los clientes Anthropic usan `/v1/messages` y estos alias:
 
-| Modelo Claude | Modelo Interno             | Rol |
+| Modelo Claude | Modelo Interno             | Routing Estratégico |
 | :------------ | :------------------------- | :-- |
-| `haiku`       | `gemini-direct`            | Respuesta directa económica |
-| `sonnet`      | `deepseek-multimodal-chat` | Chat general |
-| `opus`        | `deepseek-multimodal-reasoner` | Razonamiento |
+| `haiku`       | `gemini-direct`            | **Bypass total**: Todo va a Gemini, sin DeepSeek |
+| `sonnet`      | `deepseek-multimodal-chat` | **Inteligente**: Texto → DeepSeek, Multimodal → Gemini → DeepSeek |
+| `opus`        | `deepseek-multimodal-reasoner` | **Inteligente**: Texto → DeepSeek, Multimodal → Gemini → DeepSeek |
+
+### **Routing Inteligente por Modelo**
+
+- **Haiku**: Estrategia `gemini-direct` para máxima velocidad y economía
+- **Sonnet/Opus**: Estrategia `deepseek-routing` con análisis de contenido:
+  - **Texto/código**: DeepSeek directo
+  - **Imágenes/audio/video**: Gemini → DeepSeek
+  - **PDFs**: Procesamiento local o Gemini → DeepSeek
 
 ### Configuración de Límites (vía .env)
 

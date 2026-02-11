@@ -1,11 +1,13 @@
-DeepSeek Multimodal Proxy 1.4.0
+DeepSeek Multimodal Proxy 1.5.0
 
 Que hay de nuevo
 
-- Compatible con Claude Code usando el mismo proxy.
-- Modelos simples para elegir: haiku, sonnet y opus.
-- Soporte completo para imagen, audio, video y PDF.
-- Nueva suite de pruebas para Claude Code.
-- Logs mas faciles de limpiar con un solo comando.
+- **Routing Inteligente por Modelo**:
+  - `haiku` → gemini-direct (bypass total, más rápido)
+  - `sonnet`/`opus` → deepseek-routing (análisis de contenido)
+- **Soporte Extendido Claude Code**: Tipos `input_audio`, `clipboard`, `file`
+- **Optimización de Cache**: Diferenciada por modelo para evitar contaminación
+- **Validación Mejorada**: Manejo robusto de contenido vacío y arrays
+- **Compatibilidad Total**: Mismo proxy para OpenCode y Claude Code
 
 Gracias por usar DeepSeek Multimodal Proxy.
