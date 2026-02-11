@@ -1,5 +1,9 @@
 # DeepSeek Multimodal Proxy (Gemini Edition)
 
+![License](https://img.shields.io/github/license/exithial/deepseek-multimodal-proxy?style=flat-square)
+![Version](https://img.shields.io/github/package-json/v/exithial/deepseek-multimodal-proxy?style=flat-square)
+![Node Version](https://img.shields.io/node/v/deepseek-multimodal-proxy?style=flat-square)
+
 Proxy HTTP OpenAI-compatible que implementa **arquitectura "Córtex Sensorial"** para añadir capacidades multimodales a DeepSeek utilizando **Google Gemini 2.5 Flash Lite** como sistema de percepción.
 
 ## 🎯 Arquitectura "Córtex Sensorial"
