@@ -17,11 +17,30 @@ import {
  */
 export async function processMultimodalContent(
   messages: ChatMessage[],
+  modelName?: string,
 ): Promise<{
   processedMessages: ChatMessage[];
   useDeepseekDirectly: boolean;
-  strategy: "direct" | "gemini" | "local" | "mixed";
+  strategy: "direct" | "gemini" | "local" | "mixed" | "gemini-direct";
 }> {
+  if (modelName === "gemini-direct") {
+    logger.info(
+      "Modelo gemini-direct detectado - Usando Gemini para respuesta completa",
+    );
+
+    const geminiResponse = await geminiService.generateDirectResponse(messages);
+
+    return {
+      processedMessages: [
+        {
+          role: "assistant",
+          content: geminiResponse,
+        },
+      ],
+      useDeepseekDirectly: false,
+      strategy: "gemini-direct",
+    };
+  }
   // 1. Detectar contenido
   const analysis = await detectMultimodalContent(messages);
 
@@ -184,7 +203,8 @@ export async function processMultimodalContent(
   // (ya está en los mensajes originales)
 
   // Determine strategy
-  let strategy: "direct" | "gemini" | "local" | "mixed" = "mixed";
+  let strategy: "direct" | "gemini" | "local" | "mixed" | "gemini-direct" =
+    "mixed";
   if (geminiContent.length > 0 && localContent.length === 0)
     strategy = "gemini";
   else if (geminiContent.length === 0 && localContent.length > 0)

@@ -1,6 +1,6 @@
 # Límites de Contexto de Modelos
 
-## Modelos DeepSeek API
+## Modelos OpenCode (OpenAI API)
 
 ### DeepSeek Chat
 
@@ -14,7 +14,7 @@
 - **Generación máxima**: 64,000 tokens
 - **Características**: Modelo de razonamiento mejorado
 
-## Modelos con Visión
+## Modelos con Visión (OpenCode)
 
 ### 🖼️ Modelos Multimodales con Gemini 2.5 Flash Lite
 
@@ -42,6 +42,16 @@ El proxy detecta automáticamente el destino basado en el modelo solicitado:
 | :----------------------------- | :------------------ | :--------------- | :-------------- | :-------------------------------- |
 | `deepseek-multimodal-chat`     | `deepseek-chat`     | 100K             | 8K              | ✅ Text, Image, Audio, Video, PDF |
 | `deepseek-multimodal-reasoner` | `deepseek-reasoner` | 100K             | 64K             | ✅ Text, Image, Audio, Video, PDF |
+
+## Modelos Claude Code (Anthropic)
+
+Los clientes Anthropic usan `/v1/messages` y estos alias:
+
+| Modelo Claude | Modelo Interno             | Rol |
+| :------------ | :------------------------- | :-- |
+| `haiku`       | `gemini-direct`            | Respuesta directa económica |
+| `sonnet`      | `deepseek-multimodal-chat` | Chat general |
+| `opus`        | `deepseek-multimodal-reasoner` | Razonamiento |
 
 ### Configuración de Límites (vía .env)
 

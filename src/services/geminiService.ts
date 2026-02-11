@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import type { ChatMessage } from "../types/openai";
 import { logger } from "../utils/logger";
 import { processImage, validateFileSize } from "../utils/imageProcessor";
 import { generateContextualHash } from "../utils/hashGenerator";
@@ -575,6 +576,42 @@ El asistente podrá ayudarte con la descripción proporcionada.]`;
       },
       userContext,
     );
+  }
+
+  async generateDirectResponse(messages: ChatMessage[]): Promise<string> {
+    this.ensureClient();
+
+    const geminiMessages = messages.map((msg) => ({
+      role: msg.role === "assistant" ? "model" : "user",
+      parts: [
+        {
+          text:
+            typeof msg.content === "string"
+              ? msg.content
+              : JSON.stringify(msg.content ?? ""),
+        },
+      ],
+    }));
+
+    const model = this.client!.getGenerativeModel({
+      model: this.model,
+    });
+
+    const lastMessage = geminiMessages[geminiMessages.length - 1];
+    if (!lastMessage) {
+      throw new Error("No hay mensajes para procesar con Gemini");
+    }
+
+    try {
+      const chat = model.startChat({
+        history: geminiMessages.slice(0, -1),
+      });
+      const result = await chat.sendMessage(lastMessage.parts);
+      return result.response.text();
+    } catch (error: any) {
+      logger.error("Error en generacion directa Gemini:", error);
+      throw new Error(`Gemini error: ${error.message}`);
+    }
   }
 }
 

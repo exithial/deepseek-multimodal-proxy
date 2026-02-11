@@ -20,6 +20,7 @@ show_help() {
     echo "  restart    Reinicia el servicio"
     echo "  status     Muestra el estado detallado (systemd + salud API)"
     echo "  logs       Muestra los logs en tiempo real"
+    echo "             logs --clear  Limpia logs antes de seguir"
     echo "  uninstall  Desinstala el servicio del sistema"
     echo "  help       Muestra esta ayuda"
 }
@@ -53,6 +54,10 @@ case "$1" in
         fi
         ;;
     logs)
+        if [ "$2" = "--clear" ]; then
+            sudo journalctl -u "$SERVICE_NAME" --rotate
+            sudo journalctl -u "$SERVICE_NAME" --vacuum-time=1s
+        fi
         sudo journalctl -u "$SERVICE_NAME" -f
         ;;
     uninstall)

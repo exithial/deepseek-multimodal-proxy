@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-02-11
+
+### Added
+
+- **Claude Code (Anthropic) API**: Soporte completo de `/v1/messages` con adaptador Anthropic y streaming SSE compatible.
+- **Modelos Claude Simplificados**: Alias `haiku`, `sonnet`, `opus` para selección directa desde Claude Code.
+- **Compatibilidad Multimodal Anthropic**: Soporte para `image`, `audio_url`, `video_url` y `document_url` en Claude.
+- **Tests Claude Code**: Nueva suite `test/test-claude-code.js` con cobertura de texto, imagen, audio, video, PDF y streaming.
+- **Limpieza de logs**: Nuevo comando `proxy:logs:clear` y opción `logs --clear`.
+
+### Changed
+
+- **Modelos Claude en /v1/models**: Respuesta para clientes Anthropic ahora expone `haiku`, `sonnet`, `opus`.
+
+### Fixed
+
+- **Dedupe de requests Anthropic**: Ventana corta para evitar duplicados del CLI y reducir costo.
+- **Trazabilidad de requests**: Logs ahora incluyen `request_id` e `internal` para correlación.
+
 ## [1.3.1] - 2026-02-10
 
 ### Added

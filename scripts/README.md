@@ -30,6 +30,7 @@ Este directorio contiene los scripts para la instalación, gestión y ejecución
 - `restart`: Reinicia el servicio para aplicar cambios.
 - `status`: Muestra el estado de systemd y realiza un **Health Check** real a la API.
 - `logs`: Muestra los logs en tiempo real (vía `journalctl`).
+- `logs --clear`: Limpia logs y luego muestra seguimiento en vivo.
 - `uninstall`: Elimina completamente el servicio del sistema de forma limpia.
 
 ```bash
@@ -57,8 +58,11 @@ Para mayor comodidad, estos scripts están mapeados en el `package.json`:
 | `npm run proxy:start`     | Inicia el servicio.                  |
 | `npm run proxy:stop`      | Detiene el servicio.                 |
 | `npm run proxy:logs`      | Ver logs en tiempo real.             |
+| `npm run proxy:logs:clear`| Limpiar logs y seguir en vivo.       |
 | `npm run proxy:uninstall` | Desinstalación limpia.               |
 | `npm run proxy:local`     | Ejecución manual sin systemd.        |
+| `npm run test:claude`     | Pruebas Claude Code.                 |
+| `npm run test:all`        | Ejecuta test master + Claude Code.   |
 
 ## 🧪 Pruebas
 
@@ -66,6 +70,8 @@ Para validar que la instalación y el routing funcionan correctamente:
 
 ```bash
 npm run test:master
+npm run test:claude
+npm run test:all
 ```
 
 ## ⚠️ Solución de Problemas

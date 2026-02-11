@@ -4,12 +4,96 @@ import { logger } from "./utils/logger";
 import { cacheService } from "./services/cacheService";
 import { deepseekService } from "./services/deepseekService";
 import { processMultimodalContent } from "./middleware/multimodalProcessor";
-import type { ChatCompletionRequest, ErrorResponse } from "./types/openai";
+import { anthropicAdapter } from "./services/anthropicAdapter";
+import type {
+  ChatCompletionRequest,
+  ChatCompletionResponse,
+  ErrorResponse,
+} from "./types/openai";
+import type {
+  AnthropicRequest,
+  AnthropicError,
+  AnthropicMessage,
+} from "./types/anthropic";
 import { getErrorMessage } from "./utils/error";
 import packageJson from "../package.json";
+import { randomUUID } from "crypto";
 
 const app = express();
 const PORT = parseInt(process.env.PORT || "7777");
+const DEDUPE_TTL_MS = parseInt(process.env.DEDUPE_TTL_MS || "2000");
+const HAIKU_DEFER_MS = parseInt(
+  process.env.ANTHROPIC_HAIKU_DEFER_MS || "150",
+);
+
+const inFlightAnthropic = new Map<string, Promise<AnthropicMessage>>();
+const inFlightAnthropicByContent = new Map<
+  string,
+  Promise<AnthropicMessage>
+>();
+const recentAnthropicResponses = new Map<
+  string,
+  { response: AnthropicMessage; expiresAt: number }
+>();
+
+type Deferred<T> = {
+  promise: Promise<T>;
+  resolve: (value: T) => void;
+  reject: (reason?: any) => void;
+};
+
+function createDeferred<T>(): Deferred<T> {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: any) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
+function stableStringify(value: any): string {
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableStringify(item)).join(",")}]`;
+  }
+  const keys = Object.keys(value).sort();
+  const entries = keys.map(
+    (key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`,
+  );
+  return `{${entries.join(",")}}`;
+}
+
+function getAnthropicRequestKey(request: AnthropicRequest): string {
+  const { stream, ...rest } = request;
+  return stableStringify(rest);
+}
+
+function getAnthropicContentKey(request: AnthropicRequest): string {
+  const { stream, model, ...rest } = request;
+  return stableStringify(rest);
+}
+
+function getCachedAnthropicResponse(
+  key: string,
+): AnthropicMessage | undefined {
+  const cached = recentAnthropicResponses.get(key);
+  if (!cached) return undefined;
+  if (cached.expiresAt < Date.now()) {
+    recentAnthropicResponses.delete(key);
+    return undefined;
+  }
+  return cached.response;
+}
+
+function cacheAnthropicResponse(key: string, response: AnthropicMessage): void {
+  recentAnthropicResponses.set(key, {
+    response,
+    expiresAt: Date.now() + DEDUPE_TTL_MS,
+  });
+}
 
 // Middleware con límite de 50MB (compatible con límite de Gemini API)
 app.use(express.json({ limit: "50mb" }));
@@ -26,6 +110,70 @@ app.get("/health", (req: Request, res: Response) => {
   });
 });
 
+function createOpenAIResponseFromText(
+  content: string,
+  model: string,
+): ChatCompletionResponse {
+  const now = Math.floor(Date.now() / 1000);
+  const completionTokens = Math.ceil(content.length / 4);
+  return {
+    id: `chatcmpl-${randomUUID()}`,
+    object: "chat.completion",
+    created: now,
+    model,
+    choices: [
+      {
+        index: 0,
+        message: { role: "assistant", content },
+        finish_reason: "stop",
+      },
+    ],
+    usage: {
+      prompt_tokens: 0,
+      completion_tokens: completionTokens,
+      total_tokens: completionTokens,
+    },
+  };
+}
+
+async function* createOpenAIStreamFromText(
+  content: string,
+  model: string,
+  id: string,
+): AsyncGenerator<string> {
+  const now = Math.floor(Date.now() / 1000);
+
+  const startChunk = {
+    id,
+    object: "chat.completion.chunk",
+    created: now,
+    model,
+    choices: [{ index: 0, delta: { role: "assistant" }, finish_reason: null }],
+  };
+  yield `data: ${JSON.stringify(startChunk)}\n\n`;
+
+  if (content) {
+    const contentChunk = {
+      id,
+      object: "chat.completion.chunk",
+      created: now,
+      model,
+      choices: [{ index: 0, delta: { content }, finish_reason: null }],
+    };
+    yield `data: ${JSON.stringify(contentChunk)}\n\n`;
+  }
+
+  const endChunk = {
+    id,
+    object: "chat.completion.chunk",
+    created: now,
+    model,
+    choices: [{ index: 0, delta: {}, finish_reason: "stop" }],
+  };
+  yield `data: ${JSON.stringify(endChunk)}\n\n`;
+  yield "data: [DONE]\n\n";
+}
+
 // Cache stats
 app.get("/v1/cache/stats", async (req: Request, res: Response) => {
   try {
@@ -40,11 +188,40 @@ app.get("/v1/cache/stats", async (req: Request, res: Response) => {
 // Models endpoint - Lista modelos multimodales disponibles
 // Compatible 100% con OpenAI API, expone 2 modelos con capacidades multimodales completas
 app.get("/v1/models", (req: Request, res: Response) => {
+  const isAnthropicClient = req.headers["anthropic-version"] !== undefined;
+
+  if (isAnthropicClient) {
+    logger.info("GET /v1/models (cliente: Claude Code)");
+    res.json({
+      object: "list",
+      data: [
+        {
+          id: "haiku",
+          object: "model",
+          created: 1706745600,
+          owned_by: "anthropic",
+        },
+        {
+          id: "sonnet",
+          object: "model",
+          created: 1706745600,
+          owned_by: "anthropic",
+        },
+        {
+          id: "opus",
+          object: "model",
+          created: 1706745600,
+          owned_by: "anthropic",
+        },
+      ],
+    });
+    return;
+  }
+
+  logger.info("GET /v1/models (cliente: OpenCode)");
   res.json({
     object: "list",
     data: [
-      // Modelos DeepSeek Multimodales - Arquitectura "Córtex Sensorial"
-      // DeepSeek = Cerebro, Gemini = Sentidos, Proxy = Routing inteligente
       {
         id: "deepseek-multimodal-chat",
         object: "model",
@@ -61,6 +238,15 @@ app.get("/v1/models", (req: Request, res: Response) => {
         owned_by: "deepseek-proxy",
         permission: [],
         root: "deepseek-reasoner",
+        parent: null,
+      },
+      {
+        id: "gemini-direct",
+        object: "model",
+        created: 1706745600,
+        owned_by: "gemini-proxy",
+        permission: [],
+        root: process.env.GEMINI_MODEL || "gemini-2.5-flash-lite",
         parent: null,
       },
     ],
@@ -82,15 +268,19 @@ app.post("/v1/chat/completions", async (req: Request, res: Response) => {
     // Procesar contenido multimodal - Detección de tipos de contenido
     // Routing inteligente: texto/código → DeepSeek, multimedia → Gemini
     const { processedMessages, useDeepseekDirectly, strategy } =
-      await processMultimodalContent(request.messages);
+      await processMultimodalContent(request.messages, request.model);
 
     // Setear header de estrategia para debugging y testing
     res.setHeader("X-Multimodal-Strategy", strategy);
 
-    if (useDeepseekDirectly) {
-      logger.info("✓ Contenido soportado por DeepSeek - Passthrough directo");
+    if (strategy === "gemini-direct") {
+      logger.info(
+        "OK Contenido procesado (gemini-direct) - Respuesta Gemini directa",
+      );
+    } else if (useDeepseekDirectly) {
+      logger.info("OK Contenido soportado por DeepSeek - Passthrough directo");
     } else {
-      logger.info(`✓ Contenido procesado (${strategy}) - Enrutando a DeepSeek`);
+      logger.info(`OK Contenido procesado (${strategy}) - Enrutando a DeepSeek`);
     }
 
     // Crear request procesado (preservando tools y otros campos)
@@ -98,6 +288,39 @@ app.post("/v1/chat/completions", async (req: Request, res: Response) => {
       ...request,
       messages: processedMessages,
     };
+
+    if (strategy === "gemini-direct") {
+      const assistantMessage = processedMessages[0];
+      const content =
+        typeof assistantMessage?.content === "string"
+          ? assistantMessage.content
+          : JSON.stringify(assistantMessage?.content ?? "");
+
+      if (request.stream) {
+        res.setHeader("Content-Type", "text/event-stream");
+        res.setHeader("Cache-Control", "no-cache");
+        res.setHeader("Connection", "keep-alive");
+
+        const requestId = `chatcmpl-${randomUUID()}`;
+        for await (const chunk of createOpenAIStreamFromText(
+          content,
+          request.model,
+          requestId,
+        )) {
+          res.write(chunk);
+        }
+        res.end();
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+        logger.info(`OK Request stream completado (${elapsed}s total)`);
+        return;
+      }
+
+      const response = createOpenAIResponseFromText(content, request.model);
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+      logger.info(`OK Request completado (${elapsed}s total)`);
+      res.json(response);
+      return;
+    }
 
     // Streaming vs non-streaming
     if (request.stream) {
@@ -153,6 +376,350 @@ app.post("/v1/chat/completions", async (req: Request, res: Response) => {
       res.status(500).json(errorResponse);
     }
   }
+});
+
+app.post("/v1/messages", async (req: Request, res: Response) => {
+  const startTime = Date.now();
+  let requestKey = "";
+  let contentKey = "";
+  let deferred: Deferred<AnthropicMessage> | null = null;
+  const requestId = randomUUID();
+
+  try {
+    const anthropicRequest = req.body as AnthropicRequest;
+    const originalModel = anthropicRequest.model;
+    contentKey = getAnthropicContentKey(anthropicRequest);
+
+    if (originalModel === "haiku" && HAIKU_DEFER_MS > 0) {
+      await new Promise((resolve) => setTimeout(resolve, HAIKU_DEFER_MS));
+      const contentInFlight = inFlightAnthropicByContent.get(contentKey);
+      if (contentInFlight) {
+        logger.info(
+          `Haiku defer dedupe (content) | request_id: ${requestId} | model: ${originalModel}`,
+        );
+        const response = await contentInFlight;
+        res.setHeader(
+          "anthropic-version",
+          req.headers["anthropic-version"] || "2023-06-01",
+        );
+        res.json(response);
+        return;
+      }
+    }
+    requestKey = getAnthropicRequestKey(anthropicRequest);
+
+    const cachedResponse = getCachedAnthropicResponse(requestKey);
+    if (cachedResponse) {
+      logger.info(
+        `Cache HIT (Anthropic dedupe) | request_id: ${requestId} | model: ${originalModel}`,
+      );
+      if (anthropicRequest.stream) {
+        res.setHeader("Content-Type", "text/event-stream");
+        res.setHeader("Cache-Control", "no-cache");
+        res.setHeader("Connection", "keep-alive");
+        res.setHeader(
+          "anthropic-version",
+          req.headers["anthropic-version"] || "2023-06-01",
+        );
+
+        const content = cachedResponse.content
+          .map((block) => (block.type === "text" ? block.text || "" : ""))
+          .join("");
+        const openaiStream = createOpenAIStreamFromText(
+          content,
+          originalModel,
+          `chatcmpl-${randomUUID()}`,
+        );
+        const anthropicStream = anthropicAdapter.createAnthropicStream(
+          openaiStream,
+          originalModel,
+          randomUUID(),
+        );
+
+        for await (const event of anthropicStream) {
+          res.write(event);
+        }
+
+        res.end();
+      } else {
+        res.setHeader(
+          "anthropic-version",
+          req.headers["anthropic-version"] || "2023-06-01",
+        );
+        res.json(cachedResponse);
+      }
+      return;
+    }
+
+    const existing = inFlightAnthropic.get(requestKey);
+    if (existing) {
+      logger.info(
+        `In-flight dedupe (Anthropic) | request_id: ${requestId} | model: ${originalModel}`,
+      );
+      const response = await existing;
+      if (anthropicRequest.stream) {
+        res.setHeader("Content-Type", "text/event-stream");
+        res.setHeader("Cache-Control", "no-cache");
+        res.setHeader("Connection", "keep-alive");
+        res.setHeader(
+          "anthropic-version",
+          req.headers["anthropic-version"] || "2023-06-01",
+        );
+
+        const content = response.content
+          .map((block) => (block.type === "text" ? block.text || "" : ""))
+          .join("");
+        const openaiStream = createOpenAIStreamFromText(
+          content,
+          originalModel,
+          `chatcmpl-${randomUUID()}`,
+        );
+        const anthropicStream = anthropicAdapter.createAnthropicStream(
+          openaiStream,
+          originalModel,
+          randomUUID(),
+        );
+
+        for await (const event of anthropicStream) {
+          res.write(event);
+        }
+
+        res.end();
+      } else {
+        res.setHeader(
+          "anthropic-version",
+          req.headers["anthropic-version"] || "2023-06-01",
+        );
+        res.json(response);
+      }
+      return;
+    }
+
+    deferred = createDeferred<AnthropicMessage>();
+    inFlightAnthropic.set(requestKey, deferred.promise);
+    if (originalModel !== "haiku") {
+      inFlightAnthropicByContent.set(contentKey, deferred.promise);
+    }
+
+    logger.info(
+      `POST /v1/messages | request_id: ${requestId} | model: ${originalModel} | stream: ${anthropicRequest.stream || false}`,
+    );
+
+    const openaiRequest = anthropicAdapter.anthropicToInternal(anthropicRequest);
+    const internalModel = openaiRequest.model;
+
+    const { processedMessages, useDeepseekDirectly, strategy } =
+      await processMultimodalContent(
+        openaiRequest.messages,
+        openaiRequest.model,
+      );
+
+    res.setHeader("X-Multimodal-Strategy", strategy);
+
+    if (useDeepseekDirectly) {
+      logger.info(
+        `OK Contenido soportado por modelo interno - Passthrough directo | request_id: ${requestId} | internal: ${internalModel}`,
+      );
+    } else {
+      logger.info(
+        `OK Contenido procesado (${strategy}) - Enrutando a modelo interno | request_id: ${requestId} | internal: ${internalModel}`,
+      );
+    }
+
+    const processedRequest: ChatCompletionRequest = {
+      ...openaiRequest,
+      messages: processedMessages,
+    };
+
+    if (anthropicRequest.stream) {
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+      res.setHeader(
+        "anthropic-version",
+        req.headers["anthropic-version"] || "2023-06-01",
+      );
+
+      const requestId = randomUUID();
+
+      if (strategy === "gemini-direct") {
+        const assistantMessage = processedMessages[0];
+        const content =
+          typeof assistantMessage?.content === "string"
+            ? assistantMessage.content
+            : JSON.stringify(assistantMessage?.content ?? "");
+
+        const openaiStream = createOpenAIStreamFromText(
+          content,
+          openaiRequest.model,
+          `chatcmpl-${requestId}`,
+        );
+        const anthropicStream = anthropicAdapter.createAnthropicStream(
+          openaiStream,
+          originalModel,
+          requestId,
+          (finalContent) => {
+            const openaiResponse = createOpenAIResponseFromText(
+              finalContent,
+              openaiRequest.model,
+            );
+            const anthropicResponse = anthropicAdapter.internalToAnthropic(
+              openaiResponse,
+              originalModel,
+            );
+            cacheAnthropicResponse(requestKey, anthropicResponse);
+            if (deferred) deferred.resolve(anthropicResponse);
+          },
+        );
+
+        for await (const event of anthropicStream) {
+          res.write(event);
+        }
+
+        res.end();
+        inFlightAnthropic.delete(requestKey);
+        inFlightAnthropicByContent.delete(contentKey);
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+        logger.info(
+          `OK Request stream Anthropic completado (${elapsed}s total) | request_id: ${requestId} | internal: ${internalModel}`,
+        );
+        return;
+      }
+
+      async function* openaiChunksGenerator() {
+        let buffer = "";
+        await deepseekService.chatCompletionStream(
+          processedRequest,
+          (chunk) => {
+            buffer += chunk;
+          },
+          (error) => {
+            throw error;
+          },
+          () => {
+          },
+        );
+        const lines = buffer.split("\n");
+        for (const line of lines) {
+          if (line.trim()) yield line;
+        }
+      }
+
+      const anthropicStream = anthropicAdapter.createAnthropicStream(
+        openaiChunksGenerator(),
+        originalModel,
+        requestId,
+        (finalContent) => {
+          const openaiResponse = createOpenAIResponseFromText(
+            finalContent,
+            openaiRequest.model,
+          );
+          const anthropicResponse = anthropicAdapter.internalToAnthropic(
+            openaiResponse,
+            originalModel,
+          );
+          cacheAnthropicResponse(requestKey, anthropicResponse);
+          if (deferred) deferred.resolve(anthropicResponse);
+        },
+      );
+
+      for await (const event of anthropicStream) {
+        res.write(event);
+      }
+
+      res.end();
+      inFlightAnthropic.delete(requestKey);
+      inFlightAnthropicByContent.delete(contentKey);
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+      logger.info(
+        `OK Request stream Anthropic completado (${elapsed}s total) | request_id: ${requestId} | internal: ${internalModel}`,
+      );
+      return;
+    }
+
+    if (strategy === "gemini-direct") {
+      const assistantMessage = processedMessages[0];
+      const content =
+        typeof assistantMessage?.content === "string"
+          ? assistantMessage.content
+          : JSON.stringify(assistantMessage?.content ?? "");
+      const openaiResponse = createOpenAIResponseFromText(
+        content,
+        openaiRequest.model,
+      );
+      const anthropicResponse = anthropicAdapter.internalToAnthropic(
+        openaiResponse,
+        originalModel,
+      );
+      res.setHeader(
+        "anthropic-version",
+        req.headers["anthropic-version"] || "2023-06-01",
+      );
+      res.json(anthropicResponse);
+      cacheAnthropicResponse(requestKey, anthropicResponse);
+      if (deferred) deferred.resolve(anthropicResponse);
+      inFlightAnthropic.delete(requestKey);
+      inFlightAnthropicByContent.delete(contentKey);
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+      logger.info(
+        `OK Request Anthropic completado (${elapsed}s total) | request_id: ${requestId} | internal: ${internalModel}`,
+      );
+      return;
+    }
+
+    const openaiResponse = await deepseekService.createChatCompletion(
+      processedRequest,
+      processedMessages,
+    );
+
+    const anthropicResponse = anthropicAdapter.internalToAnthropic(
+      openaiResponse,
+      originalModel,
+    );
+
+    res.setHeader(
+      "anthropic-version",
+      req.headers["anthropic-version"] || "2023-06-01",
+    );
+    res.json(anthropicResponse);
+    cacheAnthropicResponse(requestKey, anthropicResponse);
+    if (deferred) deferred.resolve(anthropicResponse);
+    inFlightAnthropic.delete(requestKey);
+    inFlightAnthropicByContent.delete(contentKey);
+
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    logger.info(
+      `OK Request Anthropic completado (${elapsed}s total) | request_id: ${requestId} | internal: ${internalModel}`,
+    );
+  } catch (error: unknown) {
+    if (deferred) deferred.reject(error);
+    if (requestKey) inFlightAnthropic.delete(requestKey);
+    inFlightAnthropicByContent.delete(contentKey);
+    logger.error("Error procesando request Anthropic:", error);
+
+    const errorResponse: AnthropicError = {
+      type: "error",
+      error: {
+        type: "api_error",
+        message: getErrorMessage(error) || "Error interno del proxy",
+      },
+    };
+
+    if (res.headersSent) {
+      res.write(`event: error\ndata: ${JSON.stringify(errorResponse)}\n\n`);
+      res.end();
+    } else {
+      res.status(500).json(errorResponse);
+    }
+  }
+});
+
+app.post("/", (req: Request, res: Response) => {
+  res.status(200).json({ ok: true });
+});
+
+app.post("/api/event_logging/batch", (req: Request, res: Response) => {
+  res.status(200).json({ ok: true });
 });
 
 // 404 handler

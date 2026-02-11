@@ -58,6 +58,14 @@ cp .env.example .env # Y editar con tus claves
 ./scripts/manage.sh start
 ```
 
+## 🧪 Pruebas
+
+```bash
+npm run test:master
+npm run test:claude
+npm run test:all
+```
+
 ## 🔌 Integración con OpenCode
 
 ### Configuración Multimodal Completa
@@ -98,6 +106,39 @@ Agrega esto a tu `~/.config/opencode/opencode.json`:
   }
 }
 ```
+
+## 🤖 Integración con Claude Code (Anthropic)
+
+Configura el CLI para usar el proxy como backend Anthropic:
+
+```bash
+export ANTHROPIC_BASE_URL="http://localhost:7777"
+```
+
+Tambien puedes configurar `.claude/settings.json`:
+
+```json
+{
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "test",
+    "ANTHROPIC_API_KEY": "test",
+    "ANTHROPIC_BASE_URL": "http://localhost:7777",
+    "ANTHROPIC_MODEL": "sonnet",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "opus",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "sonnet",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "haiku",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "sonnet",
+    "ENABLE_EXPERIMENTAL_MCP_CLI": "true"
+  },
+  "model": "sonnet"
+}
+```
+
+Modelos disponibles para Claude Code:
+
+- `haiku` → gemini-direct (rápido/económico)
+- `sonnet` → deepseek-multimodal-chat
+- `opus` → deepseek-multimodal-reasoner
 
 ## 🔄 Flujo de Trabajo "Córtex Sensorial"
 
