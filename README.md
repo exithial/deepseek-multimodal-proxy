@@ -18,6 +18,7 @@ Proxy HTTP OpenAI-compatible que implementa **arquitectura "Córtex Sensorial"**
 
 - ✅ **Routing Inteligente Automático**: Detecta 8 tipos de contenido y decide routing óptimo
 - ✅ **Multimodalidad Completa**: Imágenes, audio, video, PDFs, documentos, código, texto
+- ✅ **Modo Directo**: Usa `gemini-direct` para bypassing DeepSeek y obtener respuestas ultra-rápidas directamente de Gemini
 - ✅ **Procesamiento Híbrido de PDFs**: Local (<1MB) para velocidad o Gemini (>1MB) para calidad/OCR
 - ✅ **Descarga Automática con Validación**: URLs con validación Content-Type real y límite de 50MB
 - ✅ **Caché Contextual SHA-256**: Hash único por contenido + pregunta (Evita re-procesamiento)
@@ -100,6 +101,15 @@ Agrega esto a tu `~/.config/opencode/opencode.json`:
           "name": "deepseek-multimodal-reasoner",
           "cost": { "input": 1.0, "output": 3.0 },
           "limit": { "context": 100000, "output": 64000 },
+          "modalities": {
+            "input": ["text", "image", "audio", "video", "pdf"],
+            "output": ["text"]
+          }
+        },
+        "gemini-direct": {
+          "name": "gemini-direct",
+          "cost": { "input": 0.0, "output": 0.0 },
+          "limit": { "context": 1000000, "output": 8192 },
           "modalities": {
             "input": ["text", "image", "audio", "video", "pdf"],
             "output": ["text"]

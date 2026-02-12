@@ -211,6 +211,21 @@ class MasterTestSuite {
     }
   }
 
+  async testGeminiDirect() {
+    print.header("2.5. PRUEBA GEMINI DIRECT");
+    const result = await this.runRequest('/v1/chat/completions', {
+      model: 'gemini-direct',
+      messages: [{ role: 'user', content: 'Di "Gemini Direct funciona"' }],
+      max_tokens: 10
+    }, "Gemini Direct (Bypass DeepSeek)");
+
+    if (result && result.strategy !== 'gemini-direct') {
+       print.warn(`⚠️ Estrategia inesperada para Gemini Direct: ${result.strategy} (Esperado: gemini-direct)`);
+    } else if (result) {
+       print.success("✓ Routing correcto: gemini-direct");
+    }
+  }
+
   async testImage() {
     print.header("3. PRUEBA MULTIMODAL: IMAGEN");
     
@@ -481,6 +496,7 @@ class MasterTestSuite {
     
     await this.checkHealth();
     await this.testText();
+    await this.testGeminiDirect();
     await this.testImage();
     await this.testAudio();
     await this.testPDF();

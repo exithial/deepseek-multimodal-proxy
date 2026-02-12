@@ -42,15 +42,16 @@ El proxy detecta automáticamente el destino basado en el modelo solicitado:
 | :----------------------------- | :------------------ | :--------------- | :-------------- | :-------------------------------- |
 | `deepseek-multimodal-chat`     | `deepseek-chat`     | 100K             | 8K              | ✅ Text, Image, Audio, Video, PDF |
 | `deepseek-multimodal-reasoner` | `deepseek-reasoner` | 100K             | 64K             | ✅ Text, Image, Audio, Video, PDF |
+| `gemini-direct`                | `gemini-2.5-flash-` | 1M+              | 8K              | ✅ Full Multimodal (Direct)       |
 
 ## Modelos Claude Code (Anthropic)
 
 Los clientes Anthropic usan `/v1/messages` y estos alias:
 
-| Modelo Claude | Modelo Interno             | Routing Estratégico |
-| :------------ | :------------------------- | :-- |
-| `haiku`       | `gemini-direct`            | **Bypass total**: Todo va a Gemini, sin DeepSeek |
-| `sonnet`      | `deepseek-multimodal-chat` | **Inteligente**: Texto → DeepSeek, Multimodal → Gemini → DeepSeek |
+| Modelo Claude | Modelo Interno                 | Routing Estratégico                                               |
+| :------------ | :----------------------------- | :---------------------------------------------------------------- |
+| `haiku`       | `gemini-direct`                | **Bypass total**: Todo va a Gemini, sin DeepSeek                  |
+| `sonnet`      | `deepseek-multimodal-chat`     | **Inteligente**: Texto → DeepSeek, Multimodal → Gemini → DeepSeek |
 | `opus`        | `deepseek-multimodal-reasoner` | **Inteligente**: Texto → DeepSeek, Multimodal → Gemini → DeepSeek |
 
 ### **Routing Inteligente por Modelo**
