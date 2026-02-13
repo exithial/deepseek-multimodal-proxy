@@ -6,3 +6,8 @@ cache/*.json
 !cache/.gitkeep
 *.tsbuildinfo
 .DS_Store
+
+# Testing
+coverage/
+.nyc_output/
+.vitest/

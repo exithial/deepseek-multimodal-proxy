@@ -2,10 +2,27 @@
 
 Este documento certifica la calidad técnica de la entrega actual.
 
-## 📊 Resumen de Ejecución (v1.5.0)
+## 📊 Resumen de Ejecución (v1.5.1)
 
-**Fecha:** 2026-02-12  
+**Fecha:** 2026-02-13  
  **Estado General:** ✅ **PASSED (100%)**
+
+### Tests Unitarios (Vitest)
+
+| Métrica          | Resultado |
+| :--------------- | :-------- |
+| **Test Files**   | 10        |
+| **Total Tests**  | 103       |
+| **Pasados**      | 103       |
+| **Fallados**     | 0         |
+| **Statements**   | 63.82%    |
+| **Branches**     | 55.06%    |
+| **Functions**    | 75.43%    |
+| **Lines**        | 64.15%    |
+
+**Nota:** Los tests unitarios no consumen cuota de APIs (Gemini/DeepSeek) - todos utilizan mocks.
+
+### Tests de Integración (Suite Maestra)
 
 | Métrica                  | Resultado                  |
 | :----------------------- | :------------------------- |
@@ -15,7 +32,31 @@ Este documento certifica la calidad técnica de la entrega actual.
 | **Fallados**             | 0                          |
 | **Cobertura de Routing** | 100% (9 tipos/estrategias) |
 
-## 🧪 Detalle de Pruebas Realizadas
+## 🧪 Tests Unitarios Disponibles
+
+Ejecutar tests unitarios:
+
+```bash
+# Todos los tests unitarios
+npm run test:unit
+
+# Modo watch (desarrollo)
+npm run test:unit:watch
+
+# Con UI
+npm run test:unit:ui
+
+# Con cobertura
+npx vitest run --coverage
+```
+
+### Módulos Testeados
+
+- **Utils**: `hashGenerator`, `error`, `imageProcessor`
+- **Services**: `cacheService`, `anthropicAdapter`
+- **Middleware**: `multimodalDetector`, `multimodalProcessor`, `imageDetector`
+
+## 🧪 Detalle de Pruebas de Integración Realizadas
 
 Se ha ejecutado el script `test/test-master.js` validando las siguientes trayectorias:
 
@@ -52,12 +93,14 @@ Notas:
 ## 🧪 Ejecutar Todo
 
 ```bash
-npm run test:all
+npm run test:all        # Tests de integración
+npm run test:unit       # Tests unitarios
 ```
 
 ## ⚙️ Entorno de Pruebas
 
 - **Node.js**: v24.13.0
+- **Framework Testing**: Vitest v4.0.18
 - **Servidor**: Local (vía systemd service)
 - **Modelo Multimodal**: Gemini 2.5 Flash Lite
 - **Modelo de Razonamiento**: DeepSeek Reasoner

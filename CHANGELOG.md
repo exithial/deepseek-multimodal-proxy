@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Tests Unitarios con Vitest**: Implementación de suite completa de 103 tests unitarios con cobertura del 64% (statements), sin consumir cuota de APIs mediante mocks.
+- **Framework de Testing**: Integración de Vitest como framework principal para testing con soporte de TypeScript.
+- **Cobertura de Código**: Soporte para generación de reportes de cobertura con v8.
+
+### Changed
+
+- **BACKLOG.md**: Reorganización de prioridades, moviendo testing y CI/CD a prioridad ALTA.
+
+### Fixed
+
+- **.gitignore**: Agregadas carpetas de cobertura (`coverage/`, `.nyc_output/`, `.vitest/`) al gitignore.
+
 ## [1.5.1] - 2026-02-12
 
 ### Added
