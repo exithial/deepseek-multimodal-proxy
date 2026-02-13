@@ -2,7 +2,7 @@
 
 Este documento certifica la calidad técnica de la entrega actual.
 
-## 📊 Resumen de Ejecución (v1.5.1)
+## 📊 Resumen de Ejecución (v1.6.0)
 
 **Fecha:** 2026-02-13  
  **Estado General:** ✅ **PASSED (100%)**

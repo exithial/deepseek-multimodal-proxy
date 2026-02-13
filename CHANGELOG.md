@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-02-13
+
 ### Added
 
 - **Tests Unitarios con Vitest**: Implementación de suite completa de 103 tests unitarios con cobertura del 64% (statements), sin consumir cuota de APIs mediante mocks.
@@ -16,10 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Tests en múltiples versiones de Node.js (20, 22)
   - Validación de TypeScript strict mode
   - Generación automática de reportes de cobertura
+- **Badge de CI**: Badge de estado del pipeline agregado al README.
 
 ### Changed
 
 - **BACKLOG.md**: Reorganización de prioridades, moviendo testing y CI/CD a prioridad ALTA.
+- **README.md**: Actualizado con comandos de testing y requisitos de Node.js >= 20.x.
 
 ### Fixed
 

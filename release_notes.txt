@@ -1,5 +1,35 @@
-v1.5.1 - Bypass Directo y Más Velocidad
+# Release v1.6.0 - DeepSeek Multimodal Proxy
 
-✨ Soporte Gemini Direct: Accede al modelo `gemini-direct` directamente para respuestas ultra-rápidas y multimodalidad pura, sin pasar por el razonamiento (y costo) de DeepSeek. ¡Ideal para chats visuales rápidos!
+🚀 **Nueva versión lista para producción**
 
-¡Gracias por usar DeepSeek Multimodal Proxy!
+## 📊 Resumen de Cambios
+
+Esta versión trae una **infraestructura completa de testing y automatización** que eleva la calidad del proyecto.
+
+### ✨ Nuevas Características
+
+- **🧪 103 Tests Unitarios**: Suite completa con Vitest validando routing, procesamiento y lógica crítica
+- **📈 64% Cobertura de Código**: Métricas detalladas para asegurar calidad continua
+- **💰 Cero Costo de API**: Todos los tests usan mocks - no consumen cuota de Gemini ni DeepSeek
+- **⚡ Testing Rápido**: Ejecución en ~300ms para feedback inmediato durante desarrollo
+- **🔄 CI/CD Pipeline Automatizado**: GitHub Actions ejecuta tests en cada push y PR
+- **📛 Badge de Estado**: Badge en README mostrando estado del pipeline en tiempo real
+
+### 📋 Comandos de Testing Disponibles
+
+```bash
+npm run test:unit       # Ejecutar tests unitarios
+npm run test:unit:watch # Modo desarrollo (auto-reload)
+npm run test:coverage   # Ver cobertura detallada
+```
+
+### 🔧 Mejoras Internas
+
+- Framework Vitest integrado con TypeScript nativo
+- Tests automatizados en Node 20.x y 22.x
+- Validación de TypeScript en modo strict
+- Carpetas de cobertura ignoradas en Git
+
+---
+
+**deepseek-multimodal-proxy** - Proxy OpenAI-compatible con capacidades multimodales

@@ -320,9 +320,11 @@ Para pruebas rápidas sin instalación:
 node test/test-master.js
 ```
 
-## ✅ Estado Actual - Versión 1.5.0
+## ✅ Estado Actual - Versión 1.6.0
 
 - ✅ **Arquitectura "Córtex Sensorial"** completa
+- ✅ **103 Tests Unitarios** con 64% de cobertura (Vitest)
+- ✅ **CI/CD Pipeline** con GitHub Actions (tests automáticos en cada push)
 - ✅ **Routing inteligente por modelo** (haiku → gemini-direct, sonnet/opus → deepseek-routing)
 - ✅ **Soporte completo Claude Code** con tipos de contenido extendidos (input_audio, clipboard, file)
 - ✅ **Descarga con validación robusta** (Content-Type real)

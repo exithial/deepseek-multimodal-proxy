@@ -56,9 +56,13 @@ Para contribuir de forma efectiva, es importante entender dónde vive cada parte
    Esto usa `tsx watch` para recargar el proxy automáticamente tras cada cambio.
 
 3. **Pruebas:**
-   Ejecuta las pruebas integrales antes de enviar un PR:
+   Ejecuta los tests antes de enviar un PR:
 
    ```bash
+   # Tests unitarios (rápidos, sin costo de API)
+   npm run test:unit
+
+   # Tests de integración (requieren APIs)
    node test/test-master.js
    ```
 
