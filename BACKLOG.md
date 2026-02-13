@@ -15,7 +15,11 @@
   - ✅ 103 tests unitarios implementados
   - ✅ 64% cobertura de código
   - ✅ Sin consumo de cuota API (todos con mocks)
-- [ ] **CI/CD Pipeline**: Automatización de pruebas y validación de tipos en cada commit.
+- [x] **CI/CD Pipeline**: Automatización de pruebas y validación de tipos en cada commit.
+  - ✅ GitHub Actions workflow configurado
+  - ✅ Tests en Node 18, 20 y 22
+  - ✅ Validación de TypeScript
+  - ✅ Generación de cobertura
 - [ ] **Dockerización**: Imagen oficial para despliegue rápido en servidores.
 
 ### **2. Mejoras Cognitivas (Prioridad MEDIA)**

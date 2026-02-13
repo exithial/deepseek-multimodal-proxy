@@ -2,7 +2,7 @@
 
 ![License](https://img.shields.io/github/license/exithial/deepseek-multimodal-proxy?style=flat-square)
 ![Version](https://img.shields.io/github/package-json/v/exithial/deepseek-multimodal-proxy?style=flat-square)
-![Node Version](https://img.shields.io/node/v/deepseek-multimodal-proxy?style=flat-square)
+![Node.js](https://img.shields.io/badge/node.js->=20.x-green?style=flat-square&logo=node.js)
 
 Proxy HTTP OpenAI-compatible que implementa **arquitectura "Córtex Sensorial"** para añadir capacidades multimodales a DeepSeek utilizando **Google Gemini 2.5 Flash Lite** como sistema de percepción.
 
@@ -27,7 +27,7 @@ Proxy HTTP OpenAI-compatible que implementa **arquitectura "Córtex Sensorial"**
 
 ## 📦 Requisitos
 
-- **Node.js** >= 18.0.0
+- **Node.js** >= 20.x (LTS)
 - **DeepSeek API Key** (Para razonamiento/texto)
 - **Google Gemini API Key** (Para percepción multimodal)
 
@@ -65,10 +65,18 @@ cp .env.example .env # Y editar con tus claves
 
 ## 🧪 Pruebas
 
+### Tests Unitarios (Rápidos - Sin costo de API)
 ```bash
-npm run test:master
-npm run test:claude
-npm run test:all
+npm run test:unit       # 103 tests en <1 segundo
+npm run test:unit:watch # Modo desarrollo
+npm run test:coverage   # Ver cobertura (64%)
+```
+
+### Tests de Integración (Requieren APIs)
+```bash
+npm run test:master     # Suite maestra completa
+npm run test:claude     # Tests de compatibilidad Anthropic
+npm run test:all        # Todos los tests de integración
 ```
 
 ## 🔌 Integración con OpenCode

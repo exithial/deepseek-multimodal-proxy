@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Tests Unitarios con Vitest**: Implementación de suite completa de 103 tests unitarios con cobertura del 64% (statements), sin consumir cuota de APIs mediante mocks.
 - **Framework de Testing**: Integración de Vitest como framework principal para testing con soporte de TypeScript.
 - **Cobertura de Código**: Soporte para generación de reportes de cobertura con v8.
+- **CI/CD Pipeline**: GitHub Actions workflows para automatización de tests y validación de tipos en cada push y PR.
+  - Tests en múltiples versiones de Node.js (20, 22)
+  - Validación de TypeScript strict mode
+  - Generación automática de reportes de cobertura
 
 ### Changed
 
