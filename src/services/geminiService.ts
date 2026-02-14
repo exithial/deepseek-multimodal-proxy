@@ -32,8 +32,8 @@ class GeminiService {
    * Actualmente se usa un modelo único para todos los tipos de contenido.
    */
   private getModelForContentType(
-    contentType: string,
-    mimeTypeOrExtension: string,
+    _contentType: string,
+    _mimeTypeOrExtension: string,
   ): string {
     return this.model;
   }

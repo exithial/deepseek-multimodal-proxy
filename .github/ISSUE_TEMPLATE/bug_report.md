@@ -26,7 +26,7 @@ Si aplica, añade logs de `./scripts/manage.sh logs` o capturas de pantalla.
 
 - OS: [ej. Linux, macOS]
 - Node Version: [ej. 18.0.0]
-- Versión del Proxy: [ej. 1.6.0]
+ - Versión del Proxy: [ej. 1.7.0]
 
 **Contexto adicional**
 Añade cualquier otro contexto sobre el problema aquí.

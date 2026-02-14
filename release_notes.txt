@@ -1,34 +1,28 @@
-# Release v1.6.0 - DeepSeek Multimodal Proxy
+# Release v1.7.0 - DeepSeek Multimodal Proxy
 
 🚀 **Nueva versión lista para producción**
 
 ## 📊 Resumen de Cambios
 
-Esta versión trae una **infraestructura completa de testing y automatización** que eleva la calidad del proyecto.
+Esta versión corrige un problema crítico con el modelo de razonamiento y añade herramientas de calidad de código.
+
+### 🐛 Bug Fixes
+
+- **Error en modelo reasoner**: Corregido error 400 de DeepSeek API que ocurría al mantener conversaciones largas. Ahora el campo `reasoning_content` se gestiona correctamente.
+- **Compatibilidad Anthropic**: Mapeo bidireccional de bloques `thinking` ↔ `reasoning_content`.
 
 ### ✨ Nuevas Características
 
-- **🧪 103 Tests Unitarios**: Suite completa con Vitest validando routing, procesamiento y lógica crítica
-- **📈 64% Cobertura de Código**: Métricas detalladas para asegurar calidad continua
-- **💰 Cero Costo de API**: Todos los tests usan mocks - no consumen cuota de Gemini ni DeepSeek
-- **⚡ Testing Rápido**: Ejecución en ~300ms para feedback inmediato durante desarrollo
-- **🔄 CI/CD Pipeline Automatizado**: GitHub Actions ejecuta tests en cada push y PR
-- **📛 Badge de Estado**: Badge en README mostrando estado del pipeline en tiempo real
+- **ESLint integrado**: Verificación automática de código TypeScript.
+  ```bash
+  npm run lint      # Verificar código
+  npm run lint:fix # Corregir automáticamente
+  ```
 
-### 📋 Comandos de Testing Disponibles
+### ⚙️ Mejoras
 
-```bash
-npm run test:unit       # Ejecutar tests unitarios
-npm run test:unit:watch # Modo desarrollo (auto-reload)
-npm run test:coverage   # Ver cobertura detallada
-```
-
-### 🔧 Mejoras Internas
-
-- Framework Vitest integrado con TypeScript nativo
-- Tests automatizados en Node 20.x y 22.x
-- Validación de TypeScript en modo strict
-- Carpetas de cobertura ignoradas en Git
+- Lockfiles simplificado: solo `yarn.lock` en el proyecto.
+- Código más limpio: eliminados warnings y variables no usadas.
 
 ---
 
