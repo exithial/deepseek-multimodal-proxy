@@ -320,7 +320,7 @@ Para pruebas rápidas sin instalación:
 node test/test-master.js
 ```
 
-## ✅ Estado Actual - Versión 1.7.0
+## ✅ Estado Actual - Versión 1.7.1
 
 - ✅ **Arquitectura "Córtex Sensorial"** completa
 - ✅ **ESLint** configurado para verificación de código

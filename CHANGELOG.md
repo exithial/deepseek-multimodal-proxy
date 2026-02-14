@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.1] - 2026-02-13
+
+### Changed
+
+- **Lockfiles**: Restaurado `package-lock.json` para compatibilidad con CI/CD pipeline de GitHub Actions.
+
 ## [1.7.0] - 2026-02-14
 
 ### Fixed

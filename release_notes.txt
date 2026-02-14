@@ -1,29 +1,10 @@
-# Release v1.7.0 - DeepSeek Multimodal Proxy
+# deepseek-multimodal-proxy v1.7.1
 
-🚀 **Nueva versión lista para producción**
+## Novedades
 
-## 📊 Resumen de Cambios
-
-Esta versión corrige un problema crítico con el modelo de razonamiento y añade herramientas de calidad de código.
-
-### 🐛 Bug Fixes
-
-- **Error en modelo reasoner**: Corregido error 400 de DeepSeek API que ocurría al mantener conversaciones largas. Ahora el campo `reasoning_content` se gestiona correctamente.
-- **Compatibilidad Anthropic**: Mapeo bidireccional de bloques `thinking` ↔ `reasoning_content`.
-
-### ✨ Nuevas Características
-
-- **ESLint integrado**: Verificación automática de código TypeScript.
-  ```bash
-  npm run lint      # Verificar código
-  npm run lint:fix # Corregir automáticamente
-  ```
-
-### ⚙️ Mejoras
-
-- Lockfiles simplificado: solo `yarn.lock` en el proyecto.
-- Código más limpio: eliminados warnings y variables no usadas.
+🛠️ **Mejoras internas**
+- Restaurado archivo `package-lock.json` para compatibilidad con el sistema de integración continua (CI/CD).
 
 ---
 
-**deepseek-multimodal-proxy** - Proxy OpenAI-compatible con capacidades multimodales
+🔗 Repositorio: https://github.com/exithial/deepseek-multimodal-proxy
