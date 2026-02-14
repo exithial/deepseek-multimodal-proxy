@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-02-14
+
+### Fixed
+
+- **Error reasoning_content en modelo reasoner**: Corregido error 400 de DeepSeek API que faltaba el campo `reasoning_content` en mensajes del asistente al reenviar historial de conversación.
+- **Soporte bidireccional reasoning**: Ahora se mapea correctamente `thinking` blocks de Anthropic ↔ `reasoning_content` de DeepSeek.
+
+### Added
+
+- **ESLint configurado**: Configuración de ESLint con TypeScript para verificación de código. Scripts `lint` y `lint:fix` disponibles en package.json.
+
+### Changed
+
+- **Lockfiles**: Eliminado `package-lock.json`, solo `yarn.lock` queda en el proyecto.
+
+### Removed
+
+- **Warnings de variables no usadas**: Limpiados imports y variables no utilizadas en el código.
+
 ## [1.6.0] - 2026-02-13
 
 ### Added

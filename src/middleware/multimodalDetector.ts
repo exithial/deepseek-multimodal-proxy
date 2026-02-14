@@ -1,4 +1,4 @@
-import type { ChatMessage, MessageContent } from "../types/openai";
+import type { ChatMessage } from "../types/openai";
 import { logger } from "../utils/logger";
 
 export interface DetectedContent {
@@ -64,7 +64,7 @@ function detectFileType(
         if (extension === "plain") extension = "txt";
         if (extension === "mpeg") extension = "mp3";
       }
-    } catch (e) {
+    } catch (_e) {
       // Ignorar errores de parseo
     }
   }
@@ -454,7 +454,6 @@ export async function detectMultimodalContent(
           if (part.input_audio?.data) {
             const source = part.input_audio.data;
             const format = part.input_audio.format || "mp3";
-            // Forzar tipo audio ya que viene explícito
             const fileInfo = detectFileType(source, `audio/${format}`);
 
             detectedContent.push({
@@ -464,8 +463,8 @@ export async function detectMultimodalContent(
               messageIndex: lastUserMessageIndex,
               contentIndex: j,
               format: format,
-              extension: format,
-              mimeType: `audio/${format}`,
+              extension: fileInfo.extension || format,
+              mimeType: fileInfo.mimeType || `audio/${format}`,
             });
             hasOnlyText = false;
           }
@@ -712,17 +711,14 @@ export async function getLocalProcessingContent(
         logger.warn(
           `No se pudo obtener tamaño de PDF URL: ${item.source.substring(0, 80)}...`,
         );
-        // Si no podemos obtener tamaño, asumimos que va a Gemini (más seguro)
         continue;
       }
     } else if (item.source.startsWith("data:")) {
-      // Para Base64: calcular tamaño desde la cadena
       try {
         const base64Data = item.source.split(",")[1] || "";
-        fileSizeBytes = Math.floor((base64Data.length * 3) / 4); // Aproximación Base64
+        fileSizeBytes = Math.floor((base64Data.length * 3) / 4);
       } catch (error) {
         logger.warn(`No se pudo calcular tamaño de PDF Base64`);
-        // Si no podemos calcular, asumimos que va a Gemini
         continue;
       }
     } else {

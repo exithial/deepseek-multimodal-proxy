@@ -72,12 +72,12 @@ function getModelRoutingStrategy(model: string): "gemini-direct" | "deepseek-rou
 }
 
 function getAnthropicRequestKey(request: AnthropicRequest): string {
-  const { stream, ...rest } = request;
+  const { stream: _stream, ...rest } = request;
   return stableStringify(rest);
 }
 
 function getAnthropicContentKey(request: AnthropicRequest): string {
-  const { stream, model, ...rest } = request;
+  const { stream: _stream, model: _model, ...rest } = request;
   return stableStringify(rest);
 }
 

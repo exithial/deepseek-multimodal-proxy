@@ -9,7 +9,6 @@ import {
   getDeepseekSupportedContent,
   getGeminiRequiredContent,
   getLocalProcessingContent,
-  type DetectedContent,
 } from "./multimodalDetector";
 
 /**

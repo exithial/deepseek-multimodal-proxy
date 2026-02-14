@@ -85,6 +85,15 @@ class AnthropicAdapter {
           }
           continue;
         }
+
+        const thinkingBlocks = anthropicMsg.content.filter(
+          (block) => block.type === "thinking",
+        );
+        if (thinkingBlocks.length > 0) {
+          openaiMsg.reasoning_content = thinkingBlocks
+            .map((block) => block.thinking)
+            .join("\n");
+        }
       }
 
       messages.push(openaiMsg);
@@ -281,6 +290,13 @@ class AnthropicAdapter {
 
     const content: AnthropicContentBlock[] = [];
 
+    if ((message as any).reasoning_content) {
+      content.push({
+        type: "thinking",
+        thinking: (message as any).reasoning_content,
+      });
+    }
+
     if (message.content) {
       content.push({
         type: "text",
@@ -393,12 +409,6 @@ class AnthropicAdapter {
             index: 0,
           };
           yield `event: content_block_stop\ndata: ${JSON.stringify(contentBlockStop)}\n\n`;
-
-          let stopReason: AnthropicMessage["stop_reason"] = "end_turn";
-          if (parsed.choices[0].finish_reason === "length")
-            stopReason = "max_tokens";
-          else if (parsed.choices[0].finish_reason === "tool_calls")
-            stopReason = "tool_use";
 
           const messageDelta: AnthropicStreamEvent = {
             type: "message_delta",

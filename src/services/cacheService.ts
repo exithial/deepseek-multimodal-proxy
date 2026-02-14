@@ -155,7 +155,7 @@ class CacheService {
     try {
       const stats = await fs.stat(this.cacheFile);
       diskUsage = `${(stats.size / 1024 / 1024).toFixed(2)} MB`;
-    } catch (error) {
+    } catch (_error) {
       // Ignorar si no existe
     }
 

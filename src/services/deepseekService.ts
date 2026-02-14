@@ -143,6 +143,7 @@ class DeepSeekService {
         if (msg.name) prepared.name = msg.name;
         if (msg.tool_calls) prepared.tool_calls = msg.tool_calls;
         if (msg.tool_call_id) prepared.tool_call_id = msg.tool_call_id;
+        if (msg.reasoning_content !== undefined) prepared.reasoning_content = msg.reasoning_content;
 
         return prepared;
       });
@@ -155,7 +156,7 @@ class DeepSeekService {
    */
   async createChatCompletion(
     request: ChatCompletionRequest,
-    messages: ChatMessage[],
+    _messages: ChatMessage[],
   ): Promise<ChatCompletionResponse> {
     const mapped = this.mapModel(request.model);
 
