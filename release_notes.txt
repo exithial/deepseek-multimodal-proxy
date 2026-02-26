@@ -1,10 +1,40 @@
-# deepseek-multimodal-proxy v1.7.1
+🎯 **DeepSeek Multimodal Proxy v1.7.2**
 
-## Novedades
+¡Hola! Esta actualización soluciona un problema crítico que afectaba la estabilidad del streaming en tiempo real.
 
-🛠️ **Mejoras internas**
-- Restaurado archivo `package-lock.json` para compatibilidad con el sistema de integración continua (CI/CD).
+## 🐛 **¿Qué se arregló?**
+
+**Problema de parsing JSON en streaming** 🔧
+- Algunas respuestas en tiempo real se interrumpían con errores de JSON incompleto
+- Esto afectaba principalmente a conversaciones largas y streaming SSE
+- Los clientes recibían respuestas truncadas o errores de parsing
+
+## ✅ **Mejoras implementadas**
+
+🛡️ **Validación robusta de JSON**
+- Sistema de buffer acumulativo para manejar chunks incompletos
+- Verificación automática con JSON.parse() antes de enviar datos
+- Logs informativos cuando se detectan chunks inválidos
+
+⚡ **Streaming más estable**
+- Respuestas continuas sin interrupciones
+- Compatibilidad total con clientes OpenAI/Anthropic
+- Mejor experiencia en conversaciones largas
+
+## 🚀 **Impacto para usuarios**
+
+- **Streaming confiable**: Conversaciones en tiempo real sin cortes
+- **Respuestas completas**: Sin truncamiento en respuestas largas
+- **Compatibilidad mejorada**: Funciona mejor con OpenCode y Claude Code
+
+## 📦 **Detalles técnicos**
+
+- **Tipo de cambio**: Patch (corrección de bug)
+- **Versión anterior**: 1.7.1 → **Nueva versión**: 1.7.2
+- **Fecha**: 25 de febrero de 2026
 
 ---
 
-🔗 Repositorio: https://github.com/exithial/deepseek-multimodal-proxy
+**DeepSeek Multimodal Proxy**  
+*Arquitectura "Córtex Sensorial" para IA multimodal*  
+🔗 https://github.com/exithial/deepseek-multimodal-proxy

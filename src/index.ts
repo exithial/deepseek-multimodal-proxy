@@ -634,22 +634,39 @@ app.post("/v1/messages", async (req: Request, res: Response) => {
       }
 
       async function* openaiChunksGenerator() {
-        let buffer = "";
+        const chunks: string[] = [];
+        let resolvePromise: (value: void) => void;
+        const completionPromise = new Promise<void>((resolve) => {
+          resolvePromise = resolve;
+        });
+        
         await deepseekService.chatCompletionStream(
           processedRequest,
           (chunk) => {
-            buffer += chunk;
+            chunks.push(chunk);
           },
           (error) => {
             throw error;
           },
           () => {
+            resolvePromise();
           },
         );
-        const lines = buffer.split("\n");
-        for (const line of lines) {
-          if (line.trim()) yield line;
+        
+        await completionPromise;
+        
+        let buffer = "";
+        for (const chunk of chunks) {
+          buffer += chunk;
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+          
+          for (const line of lines) {
+            if (line.trim()) yield line;
+          }
         }
+        
+        if (buffer.trim()) yield buffer;
       }
 
       const anthropicStream = anthropicAdapter.createAnthropicStream(

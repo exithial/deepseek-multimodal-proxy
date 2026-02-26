@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.2] - 2026-02-25
+
+### Fixed
+
+- **JSON Parsing en Streaming**: Corregido error crítico de parsing JSON incompleto en streaming SSE con buffer acumulativo y validación robusta de JSON.parse()
+
 ## [1.7.1] - 2026-02-13
 
 ### Changed

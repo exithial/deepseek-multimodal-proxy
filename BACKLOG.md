@@ -1,6 +1,6 @@
 # BACKLOG - DeepSeek Multimodal Proxy
 
-## 📊 Estado Actual: **PRODUCTION READY (v1.7.1)**
+## 📊 Estado Actual: **PRODUCTION READY (v1.7.2)**
 
 **Última actualización:** 2026-02-14  
 **Estado:** ✅ **ESLint + 103 Tests + Bug fix reasoner**
@@ -43,3 +43,13 @@
 
 **Última actualización:** 2026-02-13  
 **Estado:** ✅ **LISTO PARA PRODUCCIÓN** 🚀
+
+
+## 🐛 **BUGS CONOCIDOS (Para Solucionar)**
+
+### **1. Parsing de JSON Incompleto (Prioridad ALTA)**
+- [x] **AI_JSONParseError**: JSON parsing failed: Text: {"id":"5b1ecb71-79f6-4b70-8c3e-49d24ecbd049","object":"chat.completion.chunk","created":1772026685,"model":"deepseek-chat","system_fingerprint":"fp_eaab8d114b_prod08.
+  - **Error message**: JSON Parse error: Unterminated string
+  - **Posible causa**: Streaming SSE con JSON incompleto o truncado
+  - **Impacto**: Respuestas interrumpidas, fallos en clientes que esperan JSON válido
+  - **Solución implementada**: Validación robusta de JSON en streaming, manejo de chunks incompletos con buffer y verificación JSON.parse

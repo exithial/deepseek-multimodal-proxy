@@ -283,19 +283,29 @@ class DeepSeekService {
         },
       );
 
+      let buffer = "";
       response.data.on("data", (chunk: Buffer) => {
-        const lines = chunk
-          .toString()
-          .split("\n")
-          .filter((line) => line.trim() !== "");
+        buffer += chunk.toString();
+        
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+        
         for (const line of lines) {
+          if (line.trim() === "") continue;
+          
           if (line.startsWith("data: ")) {
             const data = line.substring(6);
             if (data === "[DONE]") {
               onEnd();
               return;
             }
-            onChunk(`data: ${data}\n\n`);
+            
+            try {
+              JSON.parse(data);
+              onChunk(`data: ${data}\n\n`);
+            } catch (error) {
+              logger.warn(`JSON parsing error, skipping incomplete chunk: ${data.substring(0, 100)}...`);
+            }
           }
         }
       });
