@@ -3,6 +3,7 @@ dist/
 *.log
 .env
 cache/*.json
+cache/*.pid
 !cache/.gitkeep
 *.tsbuildinfo
 .DS_Store
@@ -11,3 +12,6 @@ cache/*.json
 coverage/
 .nyc_output/
 .vitest/
+
+# Engram AI agent memory
+.engram/

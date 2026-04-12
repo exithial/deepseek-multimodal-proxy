@@ -47,7 +47,7 @@ npm run test:unit:watch
 npm run test:unit:ui
 
 # Con cobertura
-npx vitest run --coverage
+npm run test:coverage
 ```
 
 ### Módulos Testeados
@@ -104,6 +104,11 @@ npm run test:unit       # Tests unitarios
 - **Servidor**: Local (vía systemd service)
 - **Modelo Multimodal**: Gemini 2.5 Flash Lite
 - **Modelo de Razonamiento**: DeepSeek Reasoner
+
+## 🪟 Nota para Windows
+
+- Los comandos `npm run build`, `npm run test:unit` y `npm run test:coverage` son portables.
+- Si el proyecto fue instalado antes en Linux o WSL y luego se usa en Windows, ejecuta `npm install` para regenerar `node_modules` y dependencias opcionales nativas.
 
 ---
 

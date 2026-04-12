@@ -31,6 +31,13 @@ Proxy HTTP OpenAI-compatible que implementa **arquitectura "Córtex Sensorial"**
 - **Node.js** >= 20.x (LTS)
 - **DeepSeek API Key** (Para razonamiento/texto)
 - **Google Gemini API Key** (Para percepción multimodal)
+- **Windows PowerShell 5.1+** o **bash** si vas a usar los scripts de gestión
+
+## 🪟 Compatibilidad de Plataforma
+
+- **Windows nativo**: Compatible mediante wrappers Node + scripts PowerShell
+- **Linux**: Compatible mediante scripts Bash + `systemd`
+- **node_modules compartido entre SOs**: No recomendado; si cambias entre Linux y Windows, reinstala dependencias con `npm install`
 
 ## 🚀 Instalación Rápida
 
@@ -39,13 +46,15 @@ Proxy HTTP OpenAI-compatible que implementa **arquitectura "Córtex Sensorial"**
 ```bash
 git clone https://github.com/exithial/deepseek-multimodal-proxy.git
 cd deepseek-multimodal-proxy
-./scripts/setup.sh
+npm install
+npm run setup
 ```
 
 Esto configurará todo automáticamente:
 
 - Recompila el proyecto con TypeScript
-- Instala el servicio systemd `deepseek-proxy`
+- En Linux, instala el servicio `systemd` `deepseek-proxy`
+- En Windows, inicia el proxy en segundo plano con gestión por PID y logs
 - Verifica la disponibilidad del servicio y los modelos
 
 ### Opción 2: Instalación Manual
@@ -58,10 +67,19 @@ npm install
 npm run build
 
 # 3. Configurar .env
-cp .env.example .env # Y editar con tus claves
+cp .env.example .env
 
-# 4. Iniciar servicio (vía script unificado)
-./scripts/manage.sh start
+# 4. Iniciar servicio
+npm run proxy:start
+```
+
+En PowerShell:
+
+```powershell
+npm install
+npm run build
+Copy-Item .env.example .env
+npm run proxy:start
 ```
 
 ## 🧪 Pruebas
@@ -136,6 +154,12 @@ Configura el CLI para usar el proxy como backend Anthropic:
 
 ```bash
 export ANTHROPIC_BASE_URL="http://localhost:7777"
+```
+
+En PowerShell:
+
+```powershell
+$env:ANTHROPIC_BASE_URL = "http://localhost:7777"
 ```
 
 Tambien puedes configurar `.claude/settings.json`:
@@ -298,20 +322,20 @@ El proxy soporta completamente las herramientas de OpenAI (`tools` y `tool_choic
 
 ## 🧪 Pruebas y Gestión
 
-Usa el script unificado `manage.sh` para controlar el proxy:
+Usa los comandos npm unificados para controlar el proxy:
 
 ```bash
-./scripts/manage.sh start      # Iniciar servicio
-./scripts/manage.sh stop       # Detener servicio
-./scripts/manage.sh status     # Ver estado y salud de la API
-./scripts/manage.sh logs       # Ver logs en tiempo real
-./scripts/manage.sh uninstall  # Eliminar el servicio del sistema
+npm run proxy:start
+npm run proxy:stop
+npm run status
+npm run proxy:logs
+npm run proxy:uninstall
 ```
 
 Para pruebas rápidas sin instalación:
 
 ```bash
-./scripts/run-local.sh
+npm run proxy:local
 ```
 
 **Verificación Integral:**

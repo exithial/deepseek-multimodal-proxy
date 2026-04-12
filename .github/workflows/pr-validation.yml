@@ -7,8 +7,11 @@ on:
 jobs:
   validate:
     name: Validate PR
-    runs-on: ubuntu-latest
-    
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -33,8 +36,4 @@ jobs:
       - name: Validate test coverage
         run: |
           npm run test:coverage
-          if [ ! -f coverage/lcov.info ]; then
-            echo "❌ Coverage report not found"
-            exit 1
-          fi
-          echo "✅ Coverage report generated"
+          node -e "const fs=require('fs'); if(!fs.existsSync('coverage/lcov.info')) { console.error('Coverage report not found'); process.exit(1); } console.log('Coverage report generated');"

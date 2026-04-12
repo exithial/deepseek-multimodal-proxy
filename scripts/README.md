@@ -4,47 +4,53 @@ Este directorio contiene los scripts para la instalación, gestión y ejecución
 
 ## 📋 Scripts Principales
 
-### 1. `setup.sh` - Instalador Automático
+### 1. `setup.sh` / `setup.ps1` - Instalador Automático
 
-**Propósito:** Configurar el entorno, compilar el proyecto e instalar el proxy como un servicio de sistema persistente.
+**Propósito:** Configurar el entorno, compilar el proyecto e instalar o iniciar el proxy según el sistema operativo.
 
 - **Detección Inteligente:** Localiza el binario real de Node.js (incluso bajo NVM/Yarn) para asegurar la persistencia del servicio systemd.
 - **Compilación Transparente:** Ejecuta `npm run build` y verifica la generación de archivos en `dist/`.
-- **Servicio Systemd:** Crea y habilita el servicio `deepseek-proxy.service` con reinicio automático.
+- **Linux:** Crea y habilita el servicio `deepseek-proxy.service` con reinicio automático.
+- **Windows:** Compila, crea `.env` si falta y arranca el proxy en segundo plano.
 - **Salida Informativa:** Reporta cada paso y verifica la salud de la API al finalizar.
 
 ```bash
-./scripts/setup.sh
+npm run setup
 ```
 
 ---
 
-### 2. `manage.sh` - Comando Único de Gestión
+### 2. `manage.sh` / `manage.ps1` - Comando Único de Gestión
 
 **Propósito:** Centralizar todas las operaciones del servicio en un solo punto de entrada.
 
 **Comandos disponibles:**
 
-- `start`: Inicia el servicio systemd.
-- `stop`: Detiene el servicio systemd.
+- `start`: Inicia el servicio o proceso gestionado.
+- `stop`: Detiene el servicio o proceso gestionado.
 - `restart`: Reinicia el servicio para aplicar cambios.
-- `status`: Muestra el estado de systemd y realiza un **Health Check** real a la API.
-- `logs`: Muestra los logs en tiempo real (vía `journalctl`).
+- `status`: Muestra el estado y realiza un **Health Check** real a la API.
+- `logs`: Muestra los logs en tiempo real.
 - `logs --clear`: Limpia logs y luego muestra seguimiento en vivo.
-- `uninstall`: Elimina completamente el servicio del sistema de forma limpia.
+- `uninstall`: Limpia la instalación/gestión actual.
 
 ```bash
-./scripts/manage.sh [comando]
+npm run proxy:start
+npm run proxy:stop
+npm run proxy:restart
+npm run status
+npm run proxy:logs
+npm run proxy:uninstall
 ```
 
 ---
 
-### 3. `run-local.sh` - Ejecución Rápida
+### 3. `run-local.sh` / `run-local.ps1` - Ejecución Rápida
 
 **Propósito:** Iniciar el proxy manualmente para pruebas rápidas o desarrollo, sin instalar nada como servicio del sistema.
 
 ```bash
-./scripts/run-local.sh
+npm run proxy:local
 ```
 
 ## 🚀 Integración con NPM
@@ -55,8 +61,8 @@ Para mayor comodidad, estos scripts están mapeados en el `package.json`:
 | :------------------------ | :----------------------------------- |
 | `npm run setup`           | Ejecuta el instalador completo.      |
 | `npm run status`          | Muestra el estado y salud de la API. |
-| `npm run proxy:start`     | Inicia el servicio.                  |
-| `npm run proxy:stop`      | Detiene el servicio.                 |
+| `npm run proxy:start`     | Inicia el servicio o proceso.        |
+| `npm run proxy:stop`      | Detiene el servicio o proceso.       |
 | `npm run proxy:logs`      | Ver logs en tiempo real.             |
 | `npm run proxy:logs:clear`| Limpiar logs y seguir en vivo.       |
 | `npm run proxy:uninstall` | Desinstalación limpia.               |
@@ -80,6 +86,7 @@ npm run test:all
 2. **Logs:** Si el servicio no inicia, usa `npm run proxy:logs` para ver el error específico de Node.js.
 3. **API Keys:** Verifica que tu archivo `.env` contenga las claves válidas para DeepSeek y Gemini.
 4. **Reseteo:** Si necesitas empezar de cero, usa `npm run proxy:uninstall` y luego `npm run setup`.
+5. **Cambio de SO:** Si mueves `node_modules` entre Linux y Windows, ejecuta `npm install` otra vez para regenerar binarios y dependencias opcionales nativas.
 
 ---
 
