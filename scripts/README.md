@@ -67,6 +67,11 @@ Para mayor comodidad, estos scripts están mapeados en el `package.json`:
 | `npm run proxy:logs:clear`| Limpiar logs y seguir en vivo.       |
 | `npm run proxy:uninstall` | Desinstalación limpia.               |
 | `npm run proxy:local`     | Ejecución manual sin systemd.        |
+| `npm run docker:build`    | Construye la imagen Docker.          |
+| `npm run docker:up`       | Levanta el stack en segundo plano.   |
+| `npm run docker:logs`     | Sigue los logs del contenedor.       |
+| `npm run docker:ps`       | Muestra el estado del stack Docker.  |
+| `npm run docker:down`     | Detiene el stack Docker.             |
 | `npm run test:claude`     | Pruebas Claude Code.                 |
 | `npm run test:all`        | Ejecuta test master + Claude Code.   |
 
@@ -87,6 +92,7 @@ npm run test:all
 3. **API Keys:** Verifica que tu archivo `.env` contenga las claves válidas para DeepSeek y Gemini.
 4. **Reseteo:** Si necesitas empezar de cero, usa `npm run proxy:uninstall` y luego `npm run setup`.
 5. **Cambio de SO:** Si mueves `node_modules` entre Linux y Windows, ejecuta `npm install` otra vez para regenerar binarios y dependencias opcionales nativas.
+6. **Docker:** Para operación persistente multiplataforma, usa `docker compose` con `restart: unless-stopped`.
 
 ---
 

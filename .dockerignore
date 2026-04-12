@@ -1,0 +1,11 @@
+node_modules
+dist
+coverage
+.git
+.github
+.engram
+cache
+combined.log
+error.log
+.env
+npm-debug.log*

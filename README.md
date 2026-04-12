@@ -37,6 +37,7 @@ Proxy HTTP OpenAI-compatible que implementa **arquitectura "Córtex Sensorial"**
 
 - **Windows nativo**: Compatible mediante wrappers Node + scripts PowerShell
 - **Linux**: Compatible mediante scripts Bash + `systemd`
+- **Docker / Docker Compose**: Compatible en Windows, Linux y macOS
 - **node_modules compartido entre SOs**: No recomendado; si cambias entre Linux y Windows, reinstala dependencias con `npm install`
 
 ## 🚀 Instalación Rápida
@@ -82,6 +83,21 @@ Copy-Item .env.example .env
 npm run proxy:start
 ```
 
+### Opción 3: Docker Compose
+
+```bash
+npm run docker:build
+npm run docker:up
+npm run docker:ps
+```
+
+Notas:
+
+- Usa `.env` como fuente de configuración del contenedor
+- Publica el puerto `7777`
+- Persiste `cache/` en un volumen Docker
+- Arranca con política `unless-stopped`, ideal para autoarranque cuando Docker inicia con el sistema
+
 ## 🧪 Pruebas
 
 ### Tests Unitarios (Rápidos - Sin costo de API)
@@ -97,6 +113,29 @@ npm run test:master     # Suite maestra completa
 npm run test:claude     # Tests de compatibilidad Anthropic
 npm run test:all        # Todos los tests de integración
 ```
+
+## 🐳 Operación con Docker
+
+Comandos principales:
+
+```bash
+npm run docker:build
+npm run docker:up
+npm run docker:logs
+npm run docker:ps
+npm run docker:down
+```
+
+Verificación rápida:
+
+```bash
+curl http://localhost:7777/health
+```
+
+Autoarranque:
+
+- **Docker Desktop (Windows/macOS)**: habilita el inicio automático de Docker Desktop; `restart: unless-stopped` levantará el contenedor cuando Docker esté disponible
+- **Docker Engine (Linux)**: habilita el servicio Docker al arranque; el contenedor volverá automáticamente
 
 ## 🔌 Integración con OpenCode
 
