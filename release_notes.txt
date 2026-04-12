@@ -1,37 +1,37 @@
-🎯 **DeepSeek Multimodal Proxy v1.7.2**
+🎯 **DeepSeek Multimodal Proxy v1.8.0**
 
-¡Hola! Esta actualización soluciona un problema crítico que afectaba la estabilidad del streaming en tiempo real.
+La versión `1.8.0` introduce dos mejoras operativas grandes: compatibilidad real con Windows y despliegue persistente con Docker Compose.
 
-## 🐛 **¿Qué se arregló?**
+## 🪟 **Soporte nativo para Windows**
 
-**Problema de parsing JSON en streaming** 🔧
-- Algunas respuestas en tiempo real se interrumpían con errores de JSON incompleto
-- Esto afectaba principalmente a conversaciones largas y streaming SSE
-- Los clientes recibían respuestas truncadas o errores de parsing
+- Scripts `setup`, `manage` y `run-local` ahora tienen implementación PowerShell
+- `package.json` usa comandos Node portables para build, lint y tests
+- El proxy se validó en Windows con compilación, tests unitarios, health check y gestión de proceso
+- CI/CD ahora cubre Windows además de Ubuntu
 
-## ✅ **Mejoras implementadas**
+## 🐳 **Despliegue con Docker**
 
-🛡️ **Validación robusta de JSON**
-- Sistema de buffer acumulativo para manejar chunks incompletos
-- Verificación automática con JSON.parse() antes de enviar datos
-- Logs informativos cuando se detectan chunks inválidos
-
-⚡ **Streaming más estable**
-- Respuestas continuas sin interrupciones
-- Compatibilidad total con clientes OpenAI/Anthropic
-- Mejor experiencia en conversaciones largas
+- Nueva imagen Docker multi-stage con runtime no root
+- Nuevo `compose.yml` con `restart: unless-stopped`
+- Volumen persistente para `cache/`
+- Healthcheck nativo sobre `/health`
+- Nuevos comandos npm para `docker:build`, `docker:up`, `docker:down`, `docker:logs` y `docker:ps`
 
 ## 🚀 **Impacto para usuarios**
 
-- **Streaming confiable**: Conversaciones en tiempo real sin cortes
-- **Respuestas completas**: Sin truncamiento en respuestas largas
-- **Compatibilidad mejorada**: Funciona mejor con OpenCode y Claude Code
+- **Windows usable de verdad**: ya no depende de Bash/systemd para operar
+- **Autoarranque simple**: con Docker Desktop iniciando con Windows, el contenedor vuelve automáticamente
+- **Operación uniforme**: mismo flujo de despliegue en Windows y Linux
+- **Mejor mantenibilidad**: documentación y CI alineados con el soporte multiplataforma
 
-## 📦 **Detalles técnicos**
+## 📦 **Estado validado**
 
-- **Tipo de cambio**: Patch (corrección de bug)
-- **Versión anterior**: 1.7.1 → **Nueva versión**: 1.7.2
-- **Fecha**: 25 de febrero de 2026
+- `npm run build`
+- `npm run test:unit` con 103 tests pasando
+- `docker compose build`
+- `docker compose up`
+- `GET /health`
+- `POST /v1/chat/completions`
 
 ---
 

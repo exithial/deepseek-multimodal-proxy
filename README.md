@@ -383,7 +383,7 @@ npm run proxy:local
 node test/test-master.js
 ```
 
-## ✅ Estado Actual - Versión 1.7.2
+## ✅ Estado Actual - Versión 1.8.0
 
 - ✅ **Arquitectura "Córtex Sensorial"** completa
 - ✅ **ESLint** configurado para verificación de código

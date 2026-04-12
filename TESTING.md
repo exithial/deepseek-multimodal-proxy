@@ -2,7 +2,7 @@
 
 Este documento certifica la calidad técnica de la entrega actual.
 
-## 📊 Resumen de Ejecución (v1.7.2)
+## 📊 Resumen de Ejecución (v1.8.0)
 
 **Fecha:** 2026-02-14  
  **Estado General:** ✅ **PASSED (100%) + ESLint**

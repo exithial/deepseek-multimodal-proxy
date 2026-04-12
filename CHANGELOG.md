@@ -5,7 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.8.0] - 2026-04-12
+
+### Added
+
+- **Soporte nativo para Windows**: Nuevos scripts PowerShell para `setup`, `manage` y `run-local`, con wrappers Node multiplataforma para mantener una única interfaz de comandos.
+- **Operación con Docker Compose**: Añadidos `Dockerfile`, `compose.yml` y `.dockerignore` para despliegue consistente con autoarranque mediante `restart: unless-stopped`.
+- **Comandos Docker en NPM**: Nuevos scripts `docker:build`, `docker:up`, `docker:down`, `docker:logs` y `docker:ps`.
+
+### Changed
+
+- **Scripts portables**: `package.json` ahora invoca binarios Node directamente para `build`, `lint` y `test`, evitando dependencias de wrappers específicos del sistema operativo.
+- **Documentación operativa**: `README.md`, `TESTING.md` y `scripts/README.md` fueron actualizados para cubrir Windows, Docker y flujos multiplataforma.
+- **CI/CD multiplataforma**: Los workflows de GitHub Actions ahora validan build y pruebas tanto en Ubuntu como en Windows.
+
+### Fixed
+
+- **Compatibilidad de dependencias en Windows**: Se eliminó la dependencia implícita de `node_modules` generados en Linux/WSL, permitiendo validación real en Windows tras reinstalar dependencias.
+- **Gestión de procesos en Windows**: Corregido el tracking del proceso del proxy en entornos con `nvm`, usando detección robusta por puerto/PID efectivo.
 
 ## [1.7.2] - 2026-02-25
 
