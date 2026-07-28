@@ -1,3 +1,10 @@
+import {
+  chartTickScale,
+  escapeHtml,
+  modelHeaderLabels,
+  renderModelsRow,
+} from "./mobile.js";
+
 const fmt = new Intl.NumberFormat("es-ES");
 // USD is conventionally formatted with '.' as the decimal separator
 // and ',' as the thousands separator regardless of the viewer's
@@ -11,16 +18,6 @@ const fmtPct = new Intl.NumberFormat("es-ES", {
   minimumFractionDigits: 1,
   maximumFractionDigits: 1,
 });
-
-const HTML_ESCAPES = {
-  "&": "&amp;",
-  "<": "&lt;",
-  ">": "&gt;",
-  '"': "&quot;",
-  "'": "&#39;",
-};
-
-import { chartTickScale, modelHeaderLabels, renderModelsRow } from "./mobile.js";
 
 let chart = null;
 let chartRange = null;
@@ -288,7 +285,7 @@ function renderModels(snap) {
   els.modelCount.textContent = `${rows.length} ${rows.length === 1 ? "modelo" : "modelos"}`;
   if (rows.length === 0) {
     els.modelsTbody.innerHTML =
-      '<tr><td colspan="10" class="empty-row">sin eventos todavia — espera a que llegue el primer request</td></tr>';
+      '<tr><td colspan="10" class="empty-row" data-label="estado">sin eventos todavia — espera a que llegue el primer request</td></tr>';
     return;
   }
   const headerThs = document.querySelectorAll("#models-table-head th");
@@ -317,6 +314,8 @@ function renderModels(snap) {
           hits,
           p50,
           p95,
+          errorCount: m.errorCount,
+          cacheHits: m.cacheHits,
         },
         headerLabels,
       );
@@ -387,7 +386,7 @@ function renderLogs(snap) {
   pane.innerHTML = slice
     .map((l) => {
       const ts = l.ts || "—";
-      return `<span class="log-line l-${escape(l.level)}"><span class="log-ts">${escape(ts)}</span><span class="lvl">${escape(l.level)}</span>${escape(l.message)}</span>`;
+      return `<span class="log-line l-${escapeHtml(l.level)}"><span class="log-ts">${escapeHtml(ts)}</span><span class="lvl">${escapeHtml(l.level)}</span>${escapeHtml(l.message)}</span>`;
     })
     .join("");
   if (wasAtBottom) pane.scrollTop = pane.scrollHeight;
@@ -496,10 +495,6 @@ async function fetchSnapshot() {
   }
 }
 
-function escape(s) {
-  return String(s ?? "").replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]);
-}
-
 els.range24h.addEventListener("click", () => {
   range = "24h";
   els.range24h.classList.add("is-active");
@@ -549,6 +544,7 @@ let resizeDebounce = null;
 window.addEventListener("resize", () => {
   if (resizeDebounce) clearTimeout(resizeDebounce);
   resizeDebounce = setTimeout(() => {
+    resizeDebounce = null;
     const currentNarrow = window.innerWidth <= 600;
     if (currentNarrow !== previousNarrow) {
       previousNarrow = currentNarrow;

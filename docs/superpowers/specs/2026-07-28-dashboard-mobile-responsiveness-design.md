@@ -269,17 +269,24 @@ err · cache · p50 · p95) becomes the label order in the cards.
 
 ### Chart
 
-`app.js` additions:
+`public/dashboard/mobile.js` addition (parameterised, not a closure over
+`window.innerWidth` — pure helper for testability):
 
 ```js
-function chartTickScale() {
-  const narrow = window.innerWidth <= 600;
+function chartTickScale(width) {
+  const narrow = typeof width === "number" && width <= 600;
   return {
     xMaxTicks: narrow ? 6 : 12,
     xFont: narrow ? 9 : 10,
     yFont: narrow ? 9 : 10,
   };
 }
+```
+
+The call site in `renderChart` passes `window.innerWidth` explicitly:
+
+```js
+const tickScale = chartTickScale(window.innerWidth);
 ```
 
 Used inside both the initial `new Chart(...)` block and the chart-range

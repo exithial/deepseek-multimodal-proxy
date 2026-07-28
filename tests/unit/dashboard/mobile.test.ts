@@ -63,10 +63,12 @@ describe("renderModelsRow", () => {
     completionTokens: "50",
     cost: "$0.05",
     req: "3",
-    errCount: 1,
-    hitsCount: 1,
+    err: "1",
+    hits: "1",
     p50: "1000ms",
     p95: "2000ms",
+    errorCount: 1,
+    cacheHits: 1,
   };
 
   it("stamps every column header on its corresponding cell", () => {
@@ -90,7 +92,7 @@ describe("renderModelsRow", () => {
     expect(renderModelsRow(sampleRow, fullLabels)).toContain(
       '<td class="num col-err" data-label="err">',
     );
-    expect(renderModelsRow({ ...sampleRow, errCount: 0 }, fullLabels)).toContain(
+    expect(renderModelsRow({ ...sampleRow, errorCount: 0 }, fullLabels)).toContain(
       '<td class="num " data-label="err">',
     );
   });
@@ -99,9 +101,19 @@ describe("renderModelsRow", () => {
     expect(renderModelsRow(sampleRow, fullLabels)).toContain(
       '<td class="num col-cache" data-label="cache">',
     );
-    expect(renderModelsRow({ ...sampleRow, hitsCount: 0 }, fullLabels)).toContain(
+    expect(renderModelsRow({ ...sampleRow, cacheHits: 0 }, fullLabels)).toContain(
       '<td class="num " data-label="cache">',
     );
+  });
+
+  it("uses raw counts (not the formatted strings) to decide row classes", () => {
+    // Display string is "—" (NaN/fmtFinite fallback) but the raw count
+    // is > 0 — col-err must still apply.
+    const html = renderModelsRow(
+      { ...sampleRow, err: "—", errorCount: 7 },
+      fullLabels,
+    );
+    expect(html).toContain('<td class="num col-err" data-label="err">—</td>');
   });
 
   it("throws when the header count drifts from 10", () => {
