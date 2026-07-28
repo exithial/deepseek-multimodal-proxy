@@ -153,6 +153,7 @@ function renderChart(snap) {
       const ctx = canvas.getContext("2d");
       const gridColor = "rgba(241, 234, 215, 0.06)";
       const tickColor = "rgba(241, 234, 215, 0.4)";
+      const tickScale = chartTickScale(window.innerWidth);
 
       chart = new Chart(ctx, {
         type: "line",
@@ -218,10 +219,13 @@ function renderChart(snap) {
               border: { display: false },
               ticks: {
                 color: tickColor,
-                font: { family: "JetBrains Mono", size: 10 },
+                font: { family: "JetBrains Mono", size: tickScale.xFont },
                 maxRotation: 0,
                 autoSkip: true,
-                maxTicksLimit: range === "24h" ? 12 : 10,
+                maxTicksLimit:
+                  range === "24h"
+                    ? tickScale.xMaxTicks
+                    : Math.min(tickScale.xMaxTicks, 10),
               },
             },
             y: {
@@ -229,7 +233,7 @@ function renderChart(snap) {
               border: { display: false },
               ticks: {
                 color: tickColor,
-                font: { family: "JetBrains Mono", size: 10 },
+                font: { family: "JetBrains Mono", size: tickScale.yFont },
                 callback: (v) => fmt.format(v),
                 maxTicksLimit: 5,
               },
@@ -526,6 +530,23 @@ window.addEventListener("pagehide", () => {
     clearInterval(pollTimer);
     pollTimer = null;
   }
+});
+
+// Re-render the chart when the viewport crosses the 600 px breakpoint so
+// the Fold6 cover → unfolded transition updates the tick density without
+// a full page reload. Debounced to 150 ms; only fires when crossing the
+// breakpoint to avoid the visual "rebirth" flicker.
+let previousNarrow = window.innerWidth <= 600;
+let resizeDebounce = null;
+window.addEventListener("resize", () => {
+  if (resizeDebounce) clearTimeout(resizeDebounce);
+  resizeDebounce = setTimeout(() => {
+    const currentNarrow = window.innerWidth <= 600;
+    if (currentNarrow !== previousNarrow) {
+      previousNarrow = currentNarrow;
+      if (lastSnapshot) renderChart(lastSnapshot);
+    }
+  }, 150);
 });
 
 // Fail loud at boot if any element ID is missing from the HTML — a
