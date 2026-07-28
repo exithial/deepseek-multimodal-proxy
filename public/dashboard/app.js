@@ -20,6 +20,8 @@ const HTML_ESCAPES = {
   "'": "&#39;",
 };
 
+import { chartTickScale, modelHeaderLabels } from "./mobile.js";
+
 let chart = null;
 let chartRange = null;
 let lastSnapshot = null;
@@ -285,21 +287,26 @@ function renderModels(snap) {
       '<tr><td colspan="10" class="empty-row">sin eventos todavia — espera a que llegue el primer request</td></tr>';
     return;
   }
+  const headerThs = document.querySelectorAll("#models-table-head th");
+  const headerLabels = modelHeaderLabels(
+    [...headerThs].map((th) => th.textContent),
+  );
+  const label = (i) => escape(headerLabels[i] ?? "");
   els.modelsTbody.innerHTML = rows
     .map((m) => {
       const errClass = m.errorCount > 0 ? "col-err" : "";
       const cacheClass = m.cacheHits > 0 ? "col-cache" : "";
       return `<tr>
-        <td class="col-model">${escape(m.model)}</td>
-        <td class="col-brain">${escape(m.brain)}</td>
-        <td class="num">${fmtFinite(m.promptTokens, fmt.format)}</td>
-        <td class="num">${fmtFinite(m.completionTokens, fmt.format)}</td>
-        <td class="num col-cost">$${fmtFinite(m.costUsd, fmtCost.format)}</td>
-        <td class="num">${fmtFinite(m.requestCount, fmt.format)}</td>
-        <td class="num ${errClass}">${fmtFinite(m.errorCount, fmt.format)}</td>
-        <td class="num ${cacheClass}">${fmtFinite(m.cacheHits, fmt.format)}</td>
-        <td class="num">${fmtFinite(m.latencyMs.p50, (v) => `${v}ms`)}</td>
-        <td class="num">${fmtFinite(m.latencyMs.p95, (v) => `${v}ms`)}</td>
+        <td class="col-model" data-label="${label(0)}">${escape(m.model)}</td>
+        <td class="col-brain" data-label="${label(1)}">${escape(m.brain)}</td>
+        <td class="num" data-label="${label(2)}">${fmtFinite(m.promptTokens, fmt.format)}</td>
+        <td class="num" data-label="${label(3)}">${fmtFinite(m.completionTokens, fmt.format)}</td>
+        <td class="num col-cost" data-label="${label(4)}">$${fmtFinite(m.costUsd, fmtCost.format)}</td>
+        <td class="num" data-label="${label(5)}">${fmtFinite(m.requestCount, fmt.format)}</td>
+        <td class="num ${errClass}" data-label="${label(6)}">${fmtFinite(m.errorCount, fmt.format)}</td>
+        <td class="num ${cacheClass}" data-label="${label(7)}">${fmtFinite(m.cacheHits, fmt.format)}</td>
+        <td class="num" data-label="${label(8)}">${fmtFinite(m.latencyMs.p50, (v) => `${v}ms`)}</td>
+        <td class="num" data-label="${label(9)}">${fmtFinite(m.latencyMs.p95, (v) => `${v}ms`)}</td>
       </tr>`;
     })
     .join("");
