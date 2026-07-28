@@ -1,6 +1,10 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
-import { chartTickScale, modelHeaderLabels } from "../../../public/dashboard/mobile.js";
+import {
+  chartTickScale,
+  modelHeaderLabels,
+  renderModelsRow,
+} from "../../../public/dashboard/mobile.js";
 
 describe("chartTickScale", () => {
   it("returns desktop defaults at 1440 px", () => {
@@ -45,5 +49,73 @@ describe("modelHeaderLabels", () => {
   it("preserves Spanish accents and unicode characters", () => {
     const labels = modelHeaderLabels(["modelo", "último", "Coste"]);
     expect(labels).toEqual(["modelo", "último", "Coste"]);
+  });
+});
+
+describe("renderModelsRow", () => {
+  const fullLabels = [
+    "modelo", "brain", "in", "out", "USD", "req", "err", "cache", "p50", "p95",
+  ];
+  const sampleRow = {
+    model: "proxy/deepseek-v4-pro",
+    brain: "deepseek-v4-pro",
+    promptTokens: "100",
+    completionTokens: "50",
+    cost: "$0.05",
+    req: "3",
+    errCount: 1,
+    hitsCount: 1,
+    p50: "1000ms",
+    p95: "2000ms",
+  };
+
+  it("stamps every column header on its corresponding cell", () => {
+    const html = renderModelsRow(sampleRow, fullLabels);
+    fullLabels.forEach((label) => {
+      expect(html).toContain(`data-label="${label}"`);
+    });
+    expect((html.match(/data-label="/g) || []).length).toBe(10);
+  });
+
+  it("escapes HTML in cell values and labels", () => {
+    const html = renderModelsRow(
+      { ...sampleRow, model: "<script>alert(1)</script>" },
+      fullLabels,
+    );
+    expect(html).not.toContain("<script>");
+    expect(html).toContain("&lt;script&gt;");
+  });
+
+  it("applies col-err only when there are errors", () => {
+    expect(renderModelsRow(sampleRow, fullLabels)).toContain(
+      '<td class="num col-err" data-label="err">',
+    );
+    expect(renderModelsRow({ ...sampleRow, errCount: 0 }, fullLabels)).toContain(
+      '<td class="num " data-label="err">',
+    );
+  });
+
+  it("applies col-cache only when there are hits", () => {
+    expect(renderModelsRow(sampleRow, fullLabels)).toContain(
+      '<td class="num col-cache" data-label="cache">',
+    );
+    expect(renderModelsRow({ ...sampleRow, hitsCount: 0 }, fullLabels)).toContain(
+      '<td class="num " data-label="cache">',
+    );
+  });
+
+  it("throws when the header count drifts from 10", () => {
+    expect(() => renderModelsRow(sampleRow, ["only-one"])).toThrowError(
+      /expected 10 column headers/,
+    );
+    expect(() => renderModelsRow(sampleRow, [])).toThrowError(
+      /expected 10 column headers/,
+    );
+    expect(() => renderModelsRow(sampleRow, fullLabels.concat("extra"))).toThrowError(
+      /expected 10 column headers/,
+    );
+    expect(() => renderModelsRow(sampleRow, undefined as unknown as string[])).toThrowError(
+      /expected 10 column headers/,
+    );
   });
 });

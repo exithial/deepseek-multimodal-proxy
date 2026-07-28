@@ -52,7 +52,15 @@ The helper file keeps the dashboard ES module as the importer; the new spec impo
 - Consumes: nothing (pure helpers).
 - Produces:
   - `chartTickScale(width: number): { xMaxTicks: number; xFont: number; yFont: number }`
-  - `modelHeaderLabels(thead: HTMLTableSectionElement | null): string[]`
+  - `modelHeaderLabels(labelTexts: unknown[]): string[]` — accepts an array of
+    header text values; call site in `app.js` reads the DOM and passes the
+    strings. This deviates from the original brainstorm which contemplated a
+    `<thead>` element parameter; jsdom was not installed and adding dev
+    dependencies was forbidden, so the helper was kept DOM-free.
+  - `renderModelsRow(row, labels): string` — renders one model row to an
+    HTML string, stamping `data-label` on every cell. Throws when
+    `labels.length !== 10` so a missing or drifted header row fails loud
+    instead of silently producing empty labels.
 
 ### Step 1.1: Write the failing test
 

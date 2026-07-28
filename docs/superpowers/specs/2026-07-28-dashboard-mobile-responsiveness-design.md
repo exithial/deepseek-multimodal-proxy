@@ -43,7 +43,12 @@ This spec was shaped through brainstorming on 2026-07-28. Decisions:
    stack of per-model cards. The transformation is data-driven in
    `app.js` — every cell receives a `data-label="…"` attribute that mirrors the
    column header. CSS uses those labels to render `Cell: value` rows without
-   duplicating data in the DOM.
+   duplicating data in the DOM. The header is read from
+   `<thead id="models-table-head">` via `modelHeaderLabels` and the row
+   template lives in `renderModelsRow` (both in `public/dashboard/mobile.js`,
+   pure helpers). `renderModelsRow` throws when the column count drifts
+   from 10 so a malformed header row fails loud instead of silently
+   degrading the mobile UX with empty labels.
 4. **Header:** the masthead stacks vertically on ≤600 px: live dot + title on
    one row, meta columns flow below as a horizontal compact strip. On
    601–1100 px the meta columns stay inline but wrap.
@@ -90,10 +95,11 @@ touches:
   3. A new `resize` listener that re-runs `renderChart` if the viewport
      crosses the 600 px boundary, so a Fold6 opened mid-session gets the
      desktop chart back without a page reload. Debounced to 150 ms.
-- `public/dashboard/index.html` — no structural changes required. The CSS
-  rule that turns `<tr>` into a card uses `display: block` + `data-label`
-  pseudo-elements; the existing element ids stay untouched, so the boot-time
-  "missing elements" check in `app.js` keeps passing.
+- `public/dashboard/index.html` — only the `<thead>` gets a new
+  `id="models-table-head"` so `renderModels` can read header text without
+  relying on positional selectors. No other structural changes; the
+  existing element ids stay untouched, so the boot-time "missing
+  elements" check in `app.js` keeps passing.
 
 ## Layout map
 

@@ -20,7 +20,7 @@ const HTML_ESCAPES = {
   "'": "&#39;",
 };
 
-import { chartTickScale, modelHeaderLabels } from "./mobile.js";
+import { chartTickScale, modelHeaderLabels, renderModelsRow } from "./mobile.js";
 
 let chart = null;
 let chartRange = null;
@@ -293,25 +293,33 @@ function renderModels(snap) {
   }
   const headerThs = document.querySelectorAll("#models-table-head th");
   const headerLabels = modelHeaderLabels(
-    [...headerThs].map((th) => th.textContent),
+    [...headerThs].map((th) => th.textContent ?? ""),
   );
-  const label = (i) => escape(headerLabels[i] ?? "");
   els.modelsTbody.innerHTML = rows
     .map((m) => {
-      const errClass = m.errorCount > 0 ? "col-err" : "";
-      const cacheClass = m.cacheHits > 0 ? "col-cache" : "";
-      return `<tr>
-        <td class="col-model" data-label="${label(0)}">${escape(m.model)}</td>
-        <td class="col-brain" data-label="${label(1)}">${escape(m.brain)}</td>
-        <td class="num" data-label="${label(2)}">${fmtFinite(m.promptTokens, fmt.format)}</td>
-        <td class="num" data-label="${label(3)}">${fmtFinite(m.completionTokens, fmt.format)}</td>
-        <td class="num col-cost" data-label="${label(4)}">$${fmtFinite(m.costUsd, fmtCost.format)}</td>
-        <td class="num" data-label="${label(5)}">${fmtFinite(m.requestCount, fmt.format)}</td>
-        <td class="num ${errClass}" data-label="${label(6)}">${fmtFinite(m.errorCount, fmt.format)}</td>
-        <td class="num ${cacheClass}" data-label="${label(7)}">${fmtFinite(m.cacheHits, fmt.format)}</td>
-        <td class="num" data-label="${label(8)}">${fmtFinite(m.latencyMs.p50, (v) => `${v}ms`)}</td>
-        <td class="num" data-label="${label(9)}">${fmtFinite(m.latencyMs.p95, (v) => `${v}ms`)}</td>
-      </tr>`;
+      const promptTokens = fmtFinite(m.promptTokens, fmt.format);
+      const completionTokens = fmtFinite(m.completionTokens, fmt.format);
+      const cost = fmtFinite(m.costUsd, fmtCost.format);
+      const req = fmtFinite(m.requestCount, fmt.format);
+      const err = fmtFinite(m.errorCount, fmt.format);
+      const hits = fmtFinite(m.cacheHits, fmt.format);
+      const p50 = fmtFinite(m.latencyMs.p50, (v) => `${v}ms`);
+      const p95 = fmtFinite(m.latencyMs.p95, (v) => `${v}ms`);
+      return renderModelsRow(
+        {
+          model: m.model,
+          brain: m.brain,
+          promptTokens,
+          completionTokens,
+          cost,
+          req,
+          err,
+          hits,
+          p50,
+          p95,
+        },
+        headerLabels,
+      );
     })
     .join("");
 }
