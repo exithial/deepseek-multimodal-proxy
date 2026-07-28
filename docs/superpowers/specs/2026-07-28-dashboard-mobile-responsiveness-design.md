@@ -47,9 +47,10 @@ This spec was shaped through brainstorming on 2026-07-28. Decisions:
 4. **Header:** the masthead stacks vertically on ≤600 px: live dot + title on
    one row, meta columns flow below as a horizontal compact strip. On
    601–1100 px the meta columns stay inline but wrap.
-5. **Logs panel controls:** wrap into a 2-row grid on ≤480 px (select spans
-   full width on top, search + refresh share the second row); on
-   481–600 px they flow into one row with smaller padding. Buttons grow to
+5. **Logs panel controls:** on 481–600 px they flow into a 2-column grid
+   with `select` spanning the full width on the first row (grid-column 1/-1)
+   and `search` + `refresh` sharing the second row. On ≤480 px every
+   control gets its own row (single-column grid). All controls grow to
    44 px min height (WCAG 2.5.5 target size) for thumb reach.
 6. **Footer:** flex columns become 2-up on ≤480 px, 3-up on 481–768 px; the
    `providers` JSON literal is rendered with `word-break: break-word` and a
@@ -126,7 +127,7 @@ touches:
 | Hero cards    | 1 column (each card full width, internal split stays)                   |
 | Chart         | Stack segmented controls below title; axis labels smaller               |
 | Models        | Each row becomes a card with label/value lines (model · brain · in · out · USD · req · err · cache · p50 · p95) |
-| Logs          | Panel-head becomes two rows: title + count on top, select full-width on the second row, search + refresh on the third row |
+| Logs          | Panel-head becomes two rows: title + count on top, controls stack into a grid below — select spans full width on its own row (1/-1), then search + refresh share the second row at 481–600 px (or each on its own row at ≤480 px) |
 | Footer        | 2 columns at ≤480 px, 3 columns 481–768 px; `providers` JSON wraps      |
 
 ### Extra-narrow ≤ 480 px (Fold6 cover, also a hard floor)
@@ -135,7 +136,7 @@ touches:
 | ------------- | -------------------------------------------------------------------------------------------- |
 | All           | Padding `12 px` horizontal (was `16 px`); card padding `14 px`; reduce chart height to 220 px |
 | Hero cards    | 1 column still; `.card-figure` reduces to 26 px font to keep 7-digit numbers single-line     |
-| Logs          | Search input shrinks to flex 1; refresh becomes icon-only on the right                       |
+| Logs          | Each control gets its own row; search input stretches to full width; refresh button keeps its label but with `min-height: 44 px`       |
 
 ## Component design
 
