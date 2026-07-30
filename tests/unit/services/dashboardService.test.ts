@@ -513,3 +513,87 @@ describe("windowed totals + windows field", () => {
     svc.close();
   });
 });
+
+describe("getRange", () => {
+  it("returns hourly buckets for spans <= 48h", async () => {
+    const { svc } = await freshService();
+    const now = Date.now();
+    for (let h = 1; h <= 24; h++) {
+      svc.recordRequest(ev({ ts: now - h * 60 * 60 * 1000, totalTokens: 100 }));
+    }
+    const snap = await svc.getRange({
+      startTime: now,
+      version: "test",
+      fromTs: now - 24 * 60 * 60 * 1000,
+      toTs: now,
+    });
+    expect(snap.metrics.series?.bucketMs).toBe(60 * 60 * 1000);
+    const bucketSum = snap.metrics.series!.buckets.reduce(
+      (acc, b) => acc + b.totalTokens,
+      0,
+    );
+    expect(bucketSum).toBe(24 * 100);
+    expect(snap.metrics.windows["24h"].totalTokens).toBe(24 * 100);
+    svc.close();
+  });
+
+  it("returns daily buckets for spans > 48h", async () => {
+    const { svc } = await freshService();
+    const now = Date.now();
+    for (let d = 1; d <= 7; d++) {
+      svc.recordRequest(ev({ ts: now - d * 86_400_000, totalTokens: 200 }));
+    }
+    const snap = await svc.getRange({
+      startTime: now,
+      version: "test",
+      fromTs: now - 7 * 86_400_000,
+      toTs: now,
+    });
+    expect(snap.metrics.series?.bucketMs).toBe(86_400_000);
+    const bucketSum = snap.metrics.series!.buckets.reduce(
+      (acc, b) => acc + b.totalTokens,
+      0,
+    );
+    expect(bucketSum).toBe(7 * 200);
+    svc.close();
+  });
+
+  it("computes totals for the half-open [fromTs, toTs) range", async () => {
+    const { svc } = await freshService();
+    const now = Date.now();
+    svc.recordRequest(ev({ ts: now - 1000, totalTokens: 10 }));
+    svc.recordRequest(ev({ ts: now - 30 * 86_400_000, totalTokens: 9999 })); // out
+    const snap = await svc.getRange({
+      startTime: now,
+      version: "test",
+      fromTs: now - 60 * 60 * 1000,
+      toTs: now,
+    });
+    expect(snap.metrics.windows["24h"].totalTokens).toBe(10);
+    svc.close();
+  });
+
+  it("throws when fromTs >= toTs", async () => {
+    const { svc } = await freshService();
+    const now = Date.now();
+    await expect(
+      svc.getRange({ startTime: now, version: "test", fromTs: now, toTs: now }),
+    ).rejects.toThrow(/fromTs.*<.*toTs/);
+    svc.close();
+  });
+
+  it("returns windows but no last24hHourly/last30dDaily for getRange", async () => {
+    const { svc } = await freshService();
+    svc.recordRequest(ev({ ts: Date.now() - 1000, totalTokens: 50 }));
+    const snap = await svc.getRange({
+      startTime: Date.now(),
+      version: "test",
+      fromTs: Date.now() - 86_400_000,
+      toTs: Date.now(),
+    });
+    expect(snap.metrics.last24hHourly).toEqual([]);
+    expect(snap.metrics.last30dDaily).toEqual([]);
+    expect(snap.metrics.windows["24h"].totalTokens).toBe(50);
+    svc.close();
+  });
+});

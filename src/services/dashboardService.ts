@@ -346,9 +346,208 @@ class DashboardService {
     }
   }
 
-  private totalsRow(rangeMs?: number): TotalsRow {
+  private totalsInRange(fromTs: number, toTs: number): TotalsRow {
+    const row = this.db!
+      .prepare(
+        `SELECT
+           COALESCE(SUM(prompt_tokens), 0) AS promptTokens,
+           COALESCE(SUM(completion_tokens), 0) AS completionTokens,
+           COALESCE(SUM(total_tokens), 0) AS totalTokens,
+           COALESCE(SUM(cost_usd), 0) AS costUsd,
+           COUNT(*) AS requestCount,
+           COALESCE(SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END), 0) AS errorCount,
+           COALESCE(SUM(cache_hit), 0) AS cacheHits
+         FROM events
+         WHERE ts >= ? AND ts < ?`,
+      )
+      .get(fromTs, toTs) as TotalsRow;
+    return row;
+  }
+
+  private hourlyBucketsInRange(
+    fromTs: number,
+    toTs: number,
+    bucketMs: number,
+  ): HourBucket[] {
+    const buckets: HourBucket[] = [];
+    const firstBucketStart = fromTs - (fromTs % bucketMs);
+    const lastBucketStart = toTs - (toTs % bucketMs);
+    for (let start = firstBucketStart; start <= lastBucketStart; start += bucketMs) {
+      buckets.push({
+        ts: start,
+        promptTokens: 0,
+        completionTokens: 0,
+        totalTokens: 0,
+        requests: 0,
+        errors: 0,
+        cacheHits: 0,
+      });
+    }
+    const rows = this.db!
+      .prepare(
+        `SELECT
+           CAST(ts / ? AS INTEGER) * ? AS bucketTs,
+           COALESCE(SUM(prompt_tokens), 0) AS promptTokens,
+           COALESCE(SUM(completion_tokens), 0) AS completionTokens,
+           COALESCE(SUM(total_tokens), 0) AS totalTokens,
+           COUNT(*) AS requests,
+           COALESCE(SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END), 0) AS errors,
+           COALESCE(SUM(cache_hit), 0) AS cacheHits
+         FROM events
+         WHERE ts >= ? AND ts < ?
+         GROUP BY bucketTs`,
+      )
+      .all(bucketMs, bucketMs, fromTs, toTs) as Array<{
+      bucketTs: number;
+      promptTokens: number;
+      completionTokens: number;
+      totalTokens: number;
+      requests: number;
+      errors: number;
+      cacheHits: number;
+    }>;
+    const byTs = new Map<number, (typeof rows)[number]>();
+    for (const r of rows) byTs.set(r.bucketTs, r);
+    return buckets.map((b) => {
+      const r = byTs.get(b.ts);
+      if (!r) return b;
+      return {
+        ts: b.ts,
+        promptTokens: r.promptTokens,
+        completionTokens: r.completionTokens,
+        totalTokens: r.totalTokens,
+        requests: r.requests,
+        errors: r.errors,
+        cacheHits: r.cacheHits,
+      };
+    });
+  }
+
+  private breakdownInRange(
+    fromTs: number,
+    toTs: number,
+    groupBy: "model" | "brain",
+  ): ModelBreakdown[] {
+    const cols =
+      groupBy === "model"
+        ? `model AS model, brain AS brain`
+        : `brain AS model, brain AS brain`;
+    const rows = this.db!
+      .prepare(
+        `SELECT ${cols},
+           COALESCE(SUM(prompt_tokens), 0) AS promptTokens,
+           COALESCE(SUM(completion_tokens), 0) AS completionTokens,
+           COALESCE(SUM(total_tokens), 0) AS totalTokens,
+           COALESCE(SUM(cost_usd), 0) AS costUsd,
+           COUNT(*) AS requestCount,
+           COALESCE(SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END), 0) AS errorCount,
+           COALESCE(SUM(cache_hit), 0) AS cacheHits
+         FROM events
+         WHERE ts >= ? AND ts < ?
+         GROUP BY model, brain
+         ORDER BY requestCount DESC`,
+      )
+      .all(fromTs, toTs) as Array<{
+      model: string;
+      brain: string;
+      promptTokens: number;
+      completionTokens: number;
+      totalTokens: number;
+      costUsd: number;
+      requestCount: number;
+      errorCount: number;
+      cacheHits: number;
+    }>;
+    return rows.map((r) => ({
+      ...r,
+      latencyMs: this.latencyPercentiles(r.model, r.brain),
+    }));
+  }
+
+  async getRange(args: {
+    startTime: number;
+    version: string;
+    fromTs: number;
+    toTs: number;
+    mode?: string;
+    providers?: unknown;
+    activeModels?: string[];
+  }): Promise<DashboardSnapshot> {
+    if (!this.db || !this.enabled) {
+      throw new Error("dashboard_disabled");
+    }
+    if (
+      typeof args.fromTs !== "number" ||
+      typeof args.toTs !== "number" ||
+      !Number.isFinite(args.fromTs) ||
+      !Number.isFinite(args.toTs)
+    ) {
+      throw new Error("invalid_timestamp");
+    }
+    if (args.fromTs >= args.toTs) {
+      throw new Error("invalid_range: fromTs must be < toTs");
+    }
+    const span = args.toTs - args.fromTs;
+    const retentionMs = this.retentionDays * 86_400_000;
+    if (span > retentionMs) {
+      throw new Error(`range_exceeds_retention: maxMs=${retentionMs}`);
+    }
+
+    const bucketMs = span <= 48 * 60 * 60 * 1000 ? 60 * 60 * 1000 : 86_400_000;
+    const buckets = this.hourlyBucketsInRange(args.fromTs, args.toTs, bucketMs);
+    const rangeTotals = this.totalsInRange(args.fromTs, args.toTs);
+
+    const windows: Record<WindowKey, TotalsRow> = {
+      "24h": this.totalsRow(WINDOW_MS["24h"], args.toTs),
+      "7d": this.totalsRow(WINDOW_MS["7d"], args.toTs),
+      "30d": this.totalsRow(WINDOW_MS["30d"], args.toTs),
+      "90d": this.totalsRow(WINDOW_MS["90d"], args.toTs),
+      total: this.totalsRow(undefined, args.toTs),
+    };
+
+    const operational: OperationalInfo = {
+      version: args.version,
+      uptimeSeconds: Math.max(0, Math.floor((Date.now() - args.startTime) / 1000)),
+      mode: args.mode || (process.env.BRAIN_MODE || "auto"),
+      providers: args.providers ?? null,
+      activeModels: args.activeModels ?? [],
+      pollIntervalMs: this.pollIntervalMs,
+      logTailLines: this.logTailLines,
+      dashboardEnabled: this.enabled,
+    };
+
+    return {
+      operational,
+      metrics: {
+        totals: {
+          ...rangeTotals,
+          cacheMisses: Math.max(0, rangeTotals.requestCount - rangeTotals.cacheHits),
+          cacheRatio:
+            rangeTotals.requestCount > 0
+              ? rangeTotals.cacheHits / rangeTotals.requestCount
+              : 0,
+        },
+        windows,
+        last24hHourly: [],
+        last30dDaily: [],
+        byModel: this.breakdownInRange(args.fromTs, args.toTs, "model"),
+        byBrain: this.breakdownInRange(args.fromTs, args.toTs, "brain"),
+        series: {
+          fromTs: args.fromTs,
+          toTs: args.toTs,
+          bucketMs,
+          buckets,
+        },
+      },
+      recentLogs: this.readRecentLogs(),
+      cacheStats: await this.safeCacheStats(),
+    };
+  }
+
+  private totalsRow(rangeMs?: number, nowMs?: number): TotalsRow {
     const hasWindow =
       typeof rangeMs === "number" && Number.isFinite(rangeMs);
+    const now = typeof nowMs === "number" ? nowMs : Date.now();
     const row = (hasWindow
       ? this.db!
           .prepare(
@@ -363,7 +562,7 @@ class DashboardService {
              FROM events
              WHERE ts >= ?`,
           )
-          .get(Date.now() - (rangeMs as number))
+          .get(now - (rangeMs as number))
       : this.db!
           .prepare(
             `SELECT
@@ -380,14 +579,14 @@ class DashboardService {
     return row;
   }
 
-  private windowsRow(): Record<WindowKey, TotalsRow> {
+  private windowsRow(nowMs?: number): Record<WindowKey, TotalsRow> {
     const out = {} as Record<WindowKey, TotalsRow>;
     for (const key of Object.keys(WINDOW_MS) as WindowKey[]) {
       const ms = WINDOW_MS[key];
       out[key] =
         ms === Number.POSITIVE_INFINITY
-          ? this.totalsRow()
-          : this.totalsRow(ms);
+          ? this.totalsRow(undefined, nowMs)
+          : this.totalsRow(ms, nowMs);
     }
     return out;
   }
