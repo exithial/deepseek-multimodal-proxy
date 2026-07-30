@@ -3,6 +3,7 @@ import {
   escapeHtml,
   modelHeaderLabels,
   renderModelsRow,
+  fmtCompact,
 } from "./mobile.js";
 
 const fmt = new Intl.NumberFormat("es-ES");
@@ -24,6 +25,7 @@ let chartRange = null;
 let lastSnapshot = null;
 let lastRefreshAt = 0;
 let range = "24h";
+let cardRange = "total";
 let pollTimer = null;
 let pollIntervalMs = 0;
 let inflight = false;
@@ -57,6 +59,7 @@ const els = {
   disabledBanner: document.getElementById("disabled-banner"),
   range24h: document.getElementById("range-24h"),
   range30d: document.getElementById("range-30d"),
+  tokensTag: document.querySelector(".card-tokens .card-tag"),
   footVersion: document.getElementById("foot-version"),
   footMode: document.getElementById("foot-mode"),
   footProviders: document.getElementById("foot-providers"),
@@ -91,28 +94,32 @@ function fmtFinite(value, fmtFn) {
 }
 
 function renderHero(snap) {
-  const t = snap.metrics.totals;
-  els.totalTokens.textContent = fmtFinite(t.totalTokens, fmt.format);
-  els.promptTokens.textContent = fmtFinite(t.promptTokens, fmt.format);
-  els.completionTokens.textContent = fmtFinite(t.completionTokens, fmt.format);
-  els.cost.textContent = fmtFinite(t.costUsd, fmtCost.format);
-  els.requests.textContent = fmtFinite(t.requestCount, fmt.format);
-  els.requestsOk.textContent = fmtFinite(
-    t.requestCount - t.errorCount,
-    fmt.format,
-  );
-  els.errors.textContent = fmtFinite(t.errorCount, fmt.format);
-  els.cacheRatio.textContent = fmtFinite(
-    t.cacheRatio * 100,
-    fmtPct.format,
-  );
-  els.cacheHits.textContent = fmtFinite(t.cacheHits, fmt.format);
-  els.cacheMisses.textContent = fmtFinite(t.cacheMisses, fmt.format);
+  const w = snap.metrics.windows[cardRange] || snap.metrics.totals;
+  els.totalTokens.textContent = fmtCompact(w.totalTokens);
+  els.promptTokens.textContent = fmtCompact(w.promptTokens);
+  els.completionTokens.textContent = fmtCompact(w.completionTokens);
+  els.cost.textContent = fmtCompact(w.costUsd, { currency: true });
+  els.requests.textContent = fmtCompact(w.requestCount);
+  els.requestsOk.textContent = fmtCompact(w.requestCount - w.errorCount);
+  els.errors.textContent = fmtCompact(w.errorCount);
+  const cacheHits = w.cacheHits;
+  const requestCount = w.requestCount;
+  const cacheMisses = Math.max(0, requestCount - cacheHits);
+  const cacheRatioPct =
+    requestCount > 0 ? (cacheHits / requestCount) * 100 : 0;
+  els.cacheRatio.textContent = Number.isFinite(cacheRatioPct)
+    ? fmtPct.format(cacheRatioPct)
+    : "—";
+  els.cacheHits.textContent = fmtCompact(cacheHits);
+  els.cacheMisses.textContent = fmtCompact(cacheMisses);
   const errRate =
-    t.requestCount > 0 ? (t.errorCount / t.requestCount) * 100 : 0;
-  els.errorRate.textContent = fmtFinite(errRate, fmtPct.format);
+    requestCount > 0 ? (w.errorCount / requestCount) * 100 : 0;
+  els.errorRate.textContent = fmtPct.format(errRate);
   els.uptime.textContent = formatUptime(snap.operational.uptimeSeconds);
   els.version.textContent = `v${snap.operational.version}`;
+  if (els.tokensTag) {
+    els.tokensTag.textContent = `Σ ${cardRange}`;
+  }
 }
 
 function renderChart(snap) {
