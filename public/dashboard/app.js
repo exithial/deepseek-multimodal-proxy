@@ -23,12 +23,13 @@ const fmtPct = new Intl.NumberFormat("es-ES", {
 let chart = null;
 let chartRange = null;
 let lastSnapshot = null;
+let lastRangeSnap = null;
 let lastRefreshAt = 0;
-let range = "24h";
-let cardRange = "total";
+let range = "total";
 let pollTimer = null;
 let pollIntervalMs = 0;
 let inflight = false;
+let activeRangeSnap = null;
 
 const els = {
   liveDot: document.getElementById("live-dot"),
@@ -58,19 +59,17 @@ const els = {
   errorMsg: document.getElementById("error-msg"),
   disabledBanner: document.getElementById("disabled-banner"),
   range24h: document.getElementById("range-24h"),
+  range7d: document.getElementById("range-7d"),
   range30d: document.getElementById("range-30d"),
-  rangeCustomToggle: document.getElementById("range-custom-toggle"),
-  rangeCustom: document.getElementById("range-custom"),
+  range90d: document.getElementById("range-90d"),
+  rangeTotal: document.getElementById("range-total"),
+  rangeCustomBtn: document.getElementById("range-custom"),
+  rangeCustomPanel: document.getElementById("range-custom-panel"),
   rangeFrom: document.getElementById("range-from"),
   rangeTo: document.getElementById("range-to"),
   rangeApply: document.getElementById("range-apply"),
   rangeLabel: document.getElementById("range-label"),
   tokensTag: document.querySelector(".card-tokens .card-tag"),
-  cardRange24h: document.getElementById("card-range-24h"),
-  cardRange7d: document.getElementById("card-range-7d"),
-  cardRange30d: document.getElementById("card-range-30d"),
-  cardRange90d: document.getElementById("card-range-90d"),
-  cardRangeTotal: document.getElementById("card-range-total"),
   footVersion: document.getElementById("foot-version"),
   footMode: document.getElementById("foot-mode"),
   footProviders: document.getElementById("foot-providers"),
@@ -104,8 +103,30 @@ function fmtFinite(value, fmtFn) {
   return Number.isFinite(value) ? fmtFn(value) : "—";
 }
 
-function renderHero(snap) {
-  const w = snap.metrics.windows[cardRange] || snap.metrics.totals;
+function activeWindow() {
+  if (!activeRangeSnap) return null;
+  if (range === "custom") {
+    return {
+      totals: activeRangeSnap.metrics.totals,
+      byModel: activeRangeSnap.metrics.byModel,
+      series: activeRangeSnap.metrics.series,
+      label: "rango",
+    };
+  }
+  const w = activeRangeSnap.metrics.windows[range];
+  if (!w) return null;
+  return {
+    totals: w,
+    byModel: w.byModel,
+    series: null,
+    label: range,
+  };
+}
+
+function renderHero() {
+  const win = activeWindow();
+  if (!win) return;
+  const w = win.totals;
   els.totalTokens.textContent = fmtCompact(w.totalTokens);
   els.promptTokens.textContent = fmtCompact(w.promptTokens);
   els.completionTokens.textContent = fmtCompact(w.completionTokens);
@@ -126,37 +147,57 @@ function renderHero(snap) {
   const errRate =
     requestCount > 0 ? (w.errorCount / requestCount) * 100 : 0;
   els.errorRate.textContent = fmtPct.format(errRate);
-  els.uptime.textContent = formatUptime(snap.operational.uptimeSeconds);
-  els.version.textContent = `v${snap.operational.version}`;
   if (els.tokensTag) {
-    els.tokensTag.textContent = `Σ ${cardRange}`;
+    els.tokensTag.textContent = `Σ ${win.label}`;
   }
 }
 
-function renderChart(snap) {
+function activeChartBuckets() {
+  if (!activeRangeSnap) return null;
+  if (range === "custom") {
+    const series = activeRangeSnap.metrics.series;
+    if (!series) return null;
+    return { buckets: series.buckets, bucketMs: series.bucketMs, hourly: series.bucketMs <= 60 * 60 * 1000 };
+  }
+  // 24h uses hourly last24hHourly; all other windows use daily last30dDaily
+  // and we just truncate it. Daily buckets already cover up to 30d; for 90d/total
+  // we fall back to the same data — beyond 30d the chart compresses.
+  const isHourly = range === "24h";
+  if (isHourly) {
+    return {
+      buckets: activeRangeSnap.metrics.last24hHourly,
+      bucketMs: 60 * 60 * 1000,
+      hourly: true,
+    };
+  }
+  return {
+    buckets: activeRangeSnap.metrics.last30dDaily,
+    bucketMs: 24 * 60 * 60 * 1000,
+    hourly: false,
+  };
+}
+
+function renderChart() {
   if (typeof Chart === "undefined") {
     showChartUnavailable();
     return;
   }
+  const data = activeChartBuckets();
+  if (!data) return;
   try {
-    const buckets =
-      range === "24h" ? snap.metrics.last24hHourly : snap.metrics.last30dDaily;
+    const { buckets, bucketMs, hourly } = data;
     const labels = buckets.map((b) => {
       // Server-side buckets are UTC-aligned (see dashboardService.hourlyBuckets
       // which integer-divides Date.now() by bucketMs). Use UTC accessors so
       // the labels match the hour the bucket actually represents regardless
       // of the viewer's local timezone.
       const d = new Date(b.ts);
-      if (range === "24h") return `${d.getUTCHours()}h`;
+      if (hourly) return `${d.getUTCHours()}h`;
       return `${d.getUTCMonth() + 1}/${d.getUTCDate()}`;
     });
     const inData = buckets.map((b) => b.promptTokens);
     const outData = buckets.map((b) => b.completionTokens);
 
-    // First render, or range switched → build the chart. Otherwise
-    // update the data in place so the line does not visually re-mount
-    // every 10s (the user reported the chart "rebirthing" on each
-    // poll). `chart.update()` with `none` mode skips the animation.
     if (!chart || chartRange !== range) {
       const canvas = document.getElementById("traffic-chart");
       if (!canvas) {
@@ -237,10 +278,9 @@ function renderChart(snap) {
                 font: { family: "JetBrains Mono", size: tickScale.xFont },
                 maxRotation: 0,
                 autoSkip: true,
-                maxTicksLimit:
-                  range === "24h"
-                    ? tickScale.xMaxTicks
-                    : Math.min(tickScale.xMaxTicks, 10),
+                maxTicksLimit: hourly
+                  ? tickScale.xMaxTicks
+                  : Math.min(tickScale.xMaxTicks, 10),
               },
             },
             y: {
@@ -258,9 +298,6 @@ function renderChart(snap) {
       });
       chartRange = range;
     } else {
-      // Incremental update: replace labels + dataset values in place
-      // and call update() with no animation. This avoids the visual
-      // re-mount on each poll.
       chart.data.labels = labels;
       chart.data.datasets[0].data = inData;
       chart.data.datasets[1].data = outData;
@@ -298,12 +335,14 @@ function clearChartUnavailable() {
   if (note) note.remove();
 }
 
-function renderModels(snap) {
-  const rows = snap.metrics.byModel;
+function renderModels() {
+  const win = activeWindow();
+  if (!win) return;
+  const rows = win.byModel;
   els.modelCount.textContent = `${rows.length} ${rows.length === 1 ? "modelo" : "modelos"}`;
   if (rows.length === 0) {
     els.modelsTbody.innerHTML =
-      '<tr><td colspan="10" class="empty-row" data-label="estado">sin eventos todavia — espera a que llegue el primer request</td></tr>';
+      '<tr><td colspan="10" class="empty-row" data-label="estado">sin eventos en este rango — espera a que llegue el primer request</td></tr>';
     return;
   }
   const headerThs = document.querySelectorAll("#models-table-head th");
@@ -426,7 +465,7 @@ function renderFooter(snap) {
   els.pollInterval.textContent = `${snap.operational.pollIntervalMs / 1000}s`;
 }
 
-function render(snap) {
+function render(snap, source) {
   lastSnapshot = snap;
   lastRefreshAt = Date.now();
   els.liveDot.classList.remove("is-stale");
@@ -436,9 +475,18 @@ function render(snap) {
   } else {
     els.disabledBanner.hidden = true;
   }
-  renderHero(snap);
-  renderChart(snap);
-  renderModels(snap);
+  // Snapshot / range are alternative sources. The snapshot is the
+  // "ambient" data; a range response only updates the active range
+  // window and reuses the last snapshot for everything else (logs,
+  // footer, error banner state, operational).
+  if (source === "range") {
+    lastRangeSnap = snap;
+  } else {
+    activeRangeSnap = snap;
+  }
+  renderHero();
+  renderChart();
+  renderModels();
   renderLogs(snap);
   renderFooter(snap);
   armPoll(snap.operational.pollIntervalMs);
@@ -498,7 +546,7 @@ async function fetchSnapshot() {
     }
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const snap = await res.json();
-    render(snap);
+    render(snap, "snapshot");
   } catch (err) {
     const reason =
       err.name === "AbortError"
@@ -513,25 +561,16 @@ async function fetchSnapshot() {
   }
 }
 
-function setChartRange(newRange) {
-  range = newRange;
-  chartRange = null;
-  els.range24h.classList.toggle("is-active", newRange === "24h");
-  els.range30d.classList.toggle("is-active", newRange === "30d");
-  els.rangeCustomToggle.classList.toggle("is-active", newRange === "custom");
-  if (newRange !== "custom" && els.rangeLabel) {
-    els.rangeLabel.textContent = "";
-  }
-  if (lastSnapshot) renderChart(lastSnapshot);
+function formatRangeLabel(fromIso, toIso) {
+  const fmtDate = new Intl.DateTimeFormat("es-ES", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "UTC",
+  });
+  return `${fmtDate.format(new Date(fromIso))} → ${fmtDate.format(new Date(toIso))} UTC`;
 }
-
-els.range24h.addEventListener("click", () => setChartRange("24h"));
-els.range30d.addEventListener("click", () => setChartRange("30d"));
-
-els.rangeCustomToggle.addEventListener("click", () => {
-  els.rangeCustom.hidden = !els.rangeCustom.hidden;
-  if (!els.rangeCustom.hidden && els.rangeFrom) els.rangeFrom.focus();
-});
 
 async function fetchRange(fromIso, toIso) {
   const params = new URLSearchParams({ from: fromIso, to: toIso });
@@ -546,35 +585,49 @@ async function fetchRange(fromIso, toIso) {
   return res.json();
 }
 
-function formatRangeLabel(fromIso, toIso) {
-  const fmtDate = new Intl.DateTimeFormat("es-ES", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "UTC",
-  });
-  return `${fmtDate.format(new Date(fromIso))} → ${fmtDate.format(new Date(toIso))} UTC`;
-}
-
-function renderCustomChart(snap) {
-  const buckets = snap.metrics.series?.buckets ?? [];
-  const bucketMs = snap.metrics.series?.bucketMs ?? 86_400_000;
-  const labels = buckets.map((b) => {
-    const d = new Date(b.ts);
-    if (bucketMs <= 60 * 60 * 1000) return `${d.getUTCHours()}h`;
-    return `${d.getUTCMonth() + 1}/${d.getUTCDate()}`;
-  });
-  if (!chart) {
-    chartRange = null;
-    renderChart(snap);
+function setRange(newRange) {
+  range = newRange;
+  const buttons = [
+    els.range24h,
+    els.range7d,
+    els.range30d,
+    els.range90d,
+    els.rangeTotal,
+    els.rangeCustomBtn,
+  ];
+  for (const b of buttons) {
+    if (!b) continue;
+    b.classList.toggle("is-active", b.getAttribute("data-range") === newRange);
+  }
+  if (els.rangeCustomBtn) {
+    els.rangeCustomBtn.setAttribute(
+      "aria-expanded",
+      newRange === "custom" ? "true" : "false",
+    );
+  }
+  if (els.rangeCustomPanel) {
+    els.rangeCustomPanel.hidden = newRange !== "custom";
+  }
+  if (newRange === "custom") {
+    if (els.rangeFrom) els.rangeFrom.focus();
     return;
   }
-  chart.data.labels = labels;
-  chart.data.datasets[0].data = buckets.map((b) => b.promptTokens);
-  chart.data.datasets[1].data = buckets.map((b) => b.completionTokens);
-  chart.update("none");
+  if (els.rangeLabel) els.rangeLabel.textContent = "";
+  chartRange = null;
+  if (lastSnapshot) {
+    activeRangeSnap = lastSnapshot;
+    renderHero();
+    renderChart();
+    renderModels();
+  }
 }
+
+els.range24h.addEventListener("click", () => setRange("24h"));
+els.range7d.addEventListener("click", () => setRange("7d"));
+els.range30d.addEventListener("click", () => setRange("30d"));
+els.range90d.addEventListener("click", () => setRange("90d"));
+els.rangeTotal.addEventListener("click", () => setRange("total"));
+els.rangeCustomBtn.addEventListener("click", () => setRange("custom"));
 
 els.rangeApply.addEventListener("click", async () => {
   const fromVal = els.rangeFrom.value;
@@ -588,11 +641,15 @@ els.rangeApply.addEventListener("click", async () => {
   const toIso = new Date(toVal).toISOString();
   try {
     const snap = await fetchRange(fromIso, toIso);
-    setChartRange("custom");
+    range = "custom";
+    for (const b of [els.range24h, els.range7d, els.range30d, els.range90d, els.rangeTotal, els.rangeCustomBtn]) {
+      if (!b) continue;
+      b.classList.toggle("is-active", b.getAttribute("data-range") === "custom");
+    }
     if (els.rangeLabel) {
       els.rangeLabel.textContent = formatRangeLabel(fromIso, toIso);
     }
-    renderCustomChart(snap);
+    render(snap, "range");
   } catch (err) {
     els.errorBanner.hidden = false;
     els.errorMsg.textContent = `dashboard: ${err.message || err}`;
@@ -638,7 +695,7 @@ window.addEventListener("resize", () => {
     const currentNarrow = window.innerWidth <= 600;
     if (currentNarrow !== previousNarrow) {
       previousNarrow = currentNarrow;
-      if (lastSnapshot) renderChart(lastSnapshot);
+      renderChart();
     }
   }, 150);
 });
@@ -646,31 +703,6 @@ window.addEventListener("resize", () => {
 // Fail loud at boot if any element ID is missing from the HTML — a
 // typo in index.html should throw immediately, not fail silently at
 // the first render call.
-function setCardRange(range) {
-  cardRange = range;
-  const buttons = [
-    els.cardRange24h,
-    els.cardRange7d,
-    els.cardRange30d,
-    els.cardRange90d,
-    els.cardRangeTotal,
-  ];
-  for (const b of buttons) {
-    if (!b) continue;
-    b.classList.toggle(
-      "is-active",
-      b.getAttribute("data-card-range") === range,
-    );
-  }
-  if (lastSnapshot) renderHero(lastSnapshot);
-}
-
-els.cardRange24h.addEventListener("click", () => setCardRange("24h"));
-els.cardRange7d.addEventListener("click", () => setCardRange("7d"));
-els.cardRange30d.addEventListener("click", () => setCardRange("30d"));
-els.cardRange90d.addEventListener("click", () => setCardRange("90d"));
-els.cardRangeTotal.addEventListener("click", () => setCardRange("total"));
-
 const missing = Object.entries(els).filter(([, v]) => !v);
 if (missing.length > 0) {
   const names = missing.map(([k]) => k).join(", ");

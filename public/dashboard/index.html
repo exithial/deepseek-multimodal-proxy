@@ -36,12 +36,22 @@
         </div>
       </header>
 
-      <div class="cards-range" id="cards-range" role="tablist" aria-label="Rango de tarjetas">
-        <button type="button" class="seg-btn" data-card-range="24h" id="card-range-24h">24h</button>
-        <button type="button" class="seg-btn" data-card-range="7d" id="card-range-7d">7d</button>
-        <button type="button" class="seg-btn" data-card-range="30d" id="card-range-30d">30d</button>
-        <button type="button" class="seg-btn" data-card-range="90d" id="card-range-90d">90d</button>
-        <button type="button" class="seg-btn is-active" data-card-range="total" id="card-range-total">total</button>
+      <div class="cards-range" id="cards-range" role="tablist" aria-label="Rango del dashboard">
+        <button type="button" class="seg-btn" data-range="24h" id="range-24h">24h</button>
+        <button type="button" class="seg-btn" data-range="7d" id="range-7d">7d</button>
+        <button type="button" class="seg-btn" data-range="30d" id="range-30d">30d</button>
+        <button type="button" class="seg-btn" data-range="90d" id="range-90d">90d</button>
+        <button type="button" class="seg-btn is-active" data-range="total" id="range-total">total</button>
+        <button type="button" class="seg-btn" data-range="custom" id="range-custom" aria-expanded="false">custom</button>
+      </div>
+      <div class="range-custom" id="range-custom-panel" hidden>
+        <span class="range-custom-label">desde</span>
+        <input type="datetime-local" id="range-from" class="search" />
+        <span class="range-sep">→</span>
+        <input type="datetime-local" id="range-to" class="search" />
+        <span class="range-custom-label">hasta</span>
+        <button type="button" class="btn" id="range-apply">apply</button>
+        <span class="range-custom-hint" id="range-custom-hint">el rango no puede superar 90 días</span>
       </div>
 
       <section class="cards" id="hero-cards">
@@ -145,28 +155,6 @@
       <section class="panel panel-chart">
         <div class="panel-head">
           <h2 class="panel-title">Trafico</h2>
-          <div class="panel-controls">
-            <button
-              type="button"
-              class="seg-btn is-active"
-              data-range="24h"
-              id="range-24h"
-            >
-              24h
-            </button>
-            <button type="button" class="seg-btn" data-range="30d" id="range-30d">
-              30d
-            </button>
-            <button type="button" class="seg-btn" id="range-custom-toggle">
-              custom
-            </button>
-            <div class="range-custom" id="range-custom" hidden>
-              <input type="datetime-local" id="range-from" class="search" />
-              <span class="range-sep">→</span>
-              <input type="datetime-local" id="range-to" class="search" />
-              <button type="button" class="btn" id="range-apply">apply</button>
-            </div>
-          </div>
         </div>
         <div class="chart-wrap">
           <canvas id="traffic-chart" aria-label="Trafico de tokens"></canvas>
