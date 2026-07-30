@@ -150,6 +150,10 @@ function renderHero() {
   if (els.tokensTag) {
     els.tokensTag.textContent = `Σ ${win.label}`;
   }
+  if (lastSnapshot) {
+    els.uptime.textContent = formatUptime(lastSnapshot.operational.uptimeSeconds);
+    els.version.textContent = `v${lastSnapshot.operational.version}`;
+  }
 }
 
 function activeChartBuckets() {
@@ -475,12 +479,16 @@ function render(snap, source) {
   } else {
     els.disabledBanner.hidden = true;
   }
-  // Snapshot / range are alternative sources. The snapshot is the
-  // "ambient" data; a range response only updates the active range
-  // window and reuses the last snapshot for everything else (logs,
-  // footer, error banner state, operational).
+  // The snapshot is the "ambient" data — it carries the windows map
+  // and the always-on time series. A range response replaces the
+  // active view's totals + series, and also refreshes ambient data
+  // (operational, logs, etc.).
   if (source === "range") {
     lastRangeSnap = snap;
+    activeRangeSnap = snap;
+  } else if (range === "custom" && lastRangeSnap) {
+    // Don't clobber a custom range view with a snapshot poll.
+    activeRangeSnap = lastRangeSnap;
   } else {
     activeRangeSnap = snap;
   }
