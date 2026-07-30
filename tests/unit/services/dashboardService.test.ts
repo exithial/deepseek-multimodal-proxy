@@ -512,6 +512,23 @@ describe("windowed totals + windows field", () => {
     expect(snap.metrics.windows["24h"].requestCount).toBe(5);
     svc.close();
   });
+
+  it("each window includes byModel filtered to events in that window", async () => {
+    const { svc } = await freshService();
+    const now = Date.now();
+    svc.recordRequest(
+      ev({ ts: now - 1000, model: "proxy/recent", brain: "b1", totalTokens: 100 }),
+    );
+    svc.recordRequest(
+      ev({ ts: now - 10 * 86_400_000, model: "proxy/old", brain: "b1", totalTokens: 200 }),
+    );
+    const snap = await svc.getSnapshot({ startTime: now, version: "test" });
+    expect(snap.metrics.windows["24h"].byModel).toHaveLength(1);
+    expect(snap.metrics.windows["24h"].byModel[0].model).toBe("proxy/recent");
+    expect(snap.metrics.windows["24h"].byModel[0].totalTokens).toBe(100);
+    expect(snap.metrics.windows["total"].byModel).toHaveLength(2);
+    svc.close();
+  });
 });
 
 describe("getRange", () => {

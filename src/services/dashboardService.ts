@@ -61,18 +61,11 @@ export interface ModelBreakdown {
 }
 
 export interface MetricsSnapshot {
-  totals: {
-    promptTokens: number;
-    completionTokens: number;
-    totalTokens: number;
-    costUsd: number;
-    requestCount: number;
-    errorCount: number;
-    cacheHits: number;
+  totals: TotalsRow & {
     cacheMisses: number;
     cacheRatio: number;
   };
-  windows: Record<WindowKey, TotalsRow>;
+  windows: Record<WindowKey, WindowBreakdown>;
   last24hHourly: HourBucket[];
   last30dDaily: HourBucket[];
   byModel: ModelBreakdown[];
@@ -93,6 +86,11 @@ export type TotalsRow = {
   requestCount: number;
   errorCount: number;
   cacheHits: number;
+};
+
+export type WindowBreakdown = TotalsRow & {
+  byModel: ModelBreakdown[];
+  byBrain: ModelBreakdown[];
 };
 
 export type WindowKey = "24h" | "7d" | "30d" | "90d" | "total";
@@ -464,6 +462,22 @@ class DashboardService {
     }));
   }
 
+  private windowBreakdown(
+    windowMs: number,
+    nowMs: number | undefined,
+  ): WindowBreakdown {
+    const now = typeof nowMs === "number" ? nowMs : Date.now();
+    const totals =
+      windowMs === Number.POSITIVE_INFINITY
+        ? this.totalsRow(undefined, now)
+        : this.totalsRow(windowMs, now);
+    return {
+      ...totals,
+      byModel: this.breakdownForWindow(windowMs, now, "model"),
+      byBrain: this.breakdownForWindow(windowMs, now, "brain"),
+    };
+  }
+
   async getRange(args: {
     startTime: number;
     version: string;
@@ -497,12 +511,12 @@ class DashboardService {
     const buckets = this.hourlyBucketsInRange(args.fromTs, args.toTs, bucketMs);
     const rangeTotals = this.totalsInRange(args.fromTs, args.toTs);
 
-    const windows: Record<WindowKey, TotalsRow> = {
-      "24h": this.totalsRow(WINDOW_MS["24h"], args.toTs),
-      "7d": this.totalsRow(WINDOW_MS["7d"], args.toTs),
-      "30d": this.totalsRow(WINDOW_MS["30d"], args.toTs),
-      "90d": this.totalsRow(WINDOW_MS["90d"], args.toTs),
-      total: this.totalsRow(undefined, args.toTs),
+    const windows: Record<WindowKey, WindowBreakdown> = {
+      "24h": this.windowBreakdown(WINDOW_MS["24h"], args.toTs),
+      "7d": this.windowBreakdown(WINDOW_MS["7d"], args.toTs),
+      "30d": this.windowBreakdown(WINDOW_MS["30d"], args.toTs),
+      "90d": this.windowBreakdown(WINDOW_MS["90d"], args.toTs),
+      total: this.windowBreakdown(Number.POSITIVE_INFINITY, args.toTs),
     };
 
     const operational: OperationalInfo = {
@@ -579,16 +593,78 @@ class DashboardService {
     return row;
   }
 
-  private windowsRow(nowMs?: number): Record<WindowKey, TotalsRow> {
-    const out = {} as Record<WindowKey, TotalsRow>;
+  private windowsRow(nowMs?: number): Record<WindowKey, WindowBreakdown> {
+    const out = {} as Record<WindowKey, WindowBreakdown>;
     for (const key of Object.keys(WINDOW_MS) as WindowKey[]) {
       const ms = WINDOW_MS[key];
-      out[key] =
+      const totals =
         ms === Number.POSITIVE_INFINITY
           ? this.totalsRow(undefined, nowMs)
           : this.totalsRow(ms, nowMs);
+      out[key] = {
+        ...totals,
+        byModel: this.breakdownForWindow(ms, nowMs, "model"),
+        byBrain: this.breakdownForWindow(ms, nowMs, "brain"),
+      };
     }
     return out;
+  }
+
+  private breakdownForWindow(
+    windowMs: number,
+    nowMs: number | undefined,
+    groupBy: "model" | "brain",
+  ): ModelBreakdown[] {
+    const now = typeof nowMs === "number" ? nowMs : Date.now();
+    const cutoff =
+      windowMs === Number.POSITIVE_INFINITY
+        ? null
+        : now - windowMs;
+    const cols =
+      groupBy === "model"
+        ? `model AS model, brain AS brain`
+        : `brain AS model, brain AS brain`;
+    const sql = cutoff === null
+      ? `SELECT ${cols},
+           COALESCE(SUM(prompt_tokens), 0) AS promptTokens,
+           COALESCE(SUM(completion_tokens), 0) AS completionTokens,
+           COALESCE(SUM(total_tokens), 0) AS totalTokens,
+           COALESCE(SUM(cost_usd), 0) AS costUsd,
+           COUNT(*) AS requestCount,
+           COALESCE(SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END), 0) AS errorCount,
+           COALESCE(SUM(cache_hit), 0) AS cacheHits
+         FROM events
+         GROUP BY model, brain
+         ORDER BY requestCount DESC`
+      : `SELECT ${cols},
+           COALESCE(SUM(prompt_tokens), 0) AS promptTokens,
+           COALESCE(SUM(completion_tokens), 0) AS completionTokens,
+           COALESCE(SUM(total_tokens), 0) AS totalTokens,
+           COALESCE(SUM(cost_usd), 0) AS costUsd,
+           COUNT(*) AS requestCount,
+           COALESCE(SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END), 0) AS errorCount,
+           COALESCE(SUM(cache_hit), 0) AS cacheHits
+         FROM events
+         WHERE ts >= ?
+         GROUP BY model, brain
+         ORDER BY requestCount DESC`;
+    const rows = (cutoff === null
+      ? this.db!.prepare(sql).all()
+      : this.db!.prepare(sql).all(cutoff)) as Array<{
+      model: string;
+      brain: string;
+      promptTokens: number;
+      completionTokens: number;
+      totalTokens: number;
+      costUsd: number;
+      requestCount: number;
+      errorCount: number;
+      cacheHits: number;
+    }>;
+    return rows.map((r) => ({
+      ...r,
+      latencyMs: this.latencyPercentiles(r.model, r.brain),
+    }));
   }
 
   private hourlyBuckets(count: number, bucketMs: number): HourBucket[] {
@@ -729,10 +805,10 @@ class DashboardService {
     };
     const emptyWindows = (Object.keys(WINDOW_MS) as WindowKey[]).reduce(
       (acc, k) => {
-        acc[k] = { ...emptyTotals };
+        acc[k] = { ...emptyTotals, byModel: [], byBrain: [] };
         return acc;
       },
-      {} as Record<WindowKey, TotalsRow>,
+      {} as Record<WindowKey, WindowBreakdown>,
     );
     return {
       totals: {
