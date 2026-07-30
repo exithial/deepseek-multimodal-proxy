@@ -60,6 +60,11 @@ const els = {
   range24h: document.getElementById("range-24h"),
   range30d: document.getElementById("range-30d"),
   tokensTag: document.querySelector(".card-tokens .card-tag"),
+  cardRange24h: document.getElementById("card-range-24h"),
+  cardRange7d: document.getElementById("card-range-7d"),
+  cardRange30d: document.getElementById("card-range-30d"),
+  cardRange90d: document.getElementById("card-range-90d"),
+  cardRangeTotal: document.getElementById("card-range-total"),
   footVersion: document.getElementById("foot-version"),
   footMode: document.getElementById("foot-mode"),
   footProviders: document.getElementById("foot-providers"),
@@ -563,6 +568,31 @@ window.addEventListener("resize", () => {
 // Fail loud at boot if any element ID is missing from the HTML — a
 // typo in index.html should throw immediately, not fail silently at
 // the first render call.
+function setCardRange(range) {
+  cardRange = range;
+  const buttons = [
+    els.cardRange24h,
+    els.cardRange7d,
+    els.cardRange30d,
+    els.cardRange90d,
+    els.cardRangeTotal,
+  ];
+  for (const b of buttons) {
+    if (!b) continue;
+    b.classList.toggle(
+      "is-active",
+      b.getAttribute("data-card-range") === range,
+    );
+  }
+  if (lastSnapshot) renderHero(lastSnapshot);
+}
+
+els.cardRange24h.addEventListener("click", () => setCardRange("24h"));
+els.cardRange7d.addEventListener("click", () => setCardRange("7d"));
+els.cardRange30d.addEventListener("click", () => setCardRange("30d"));
+els.cardRange90d.addEventListener("click", () => setCardRange("90d"));
+els.cardRangeTotal.addEventListener("click", () => setCardRange("total"));
+
 const missing = Object.entries(els).filter(([, v]) => !v);
 if (missing.length > 0) {
   const names = missing.map(([k]) => k).join(", ");

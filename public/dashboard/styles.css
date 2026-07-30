@@ -955,3 +955,41 @@ body {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* ─── range selector above hero ─────────────────────────────────────── */
+
+.cards-range {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  width: max-content;
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+
+.cards-range .seg-btn {
+  padding: 6px 12px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--fg-mute);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.cards-range .seg-btn:hover {
+  color: var(--fg);
+}
+
+.cards-range .seg-btn.is-active {
+  background: var(--line);
+  color: var(--fg);
+  border-color: var(--line);
+}
