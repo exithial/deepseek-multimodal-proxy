@@ -2,6 +2,25 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "fs";
 import os from "os";
 import path from "path";
+import type { RecordRequestPayload } from "../../../src/services/dashboardService";
+
+function ev(over: Partial<RecordRequestPayload>): RecordRequestPayload {
+  return {
+    ts: Date.now(),
+    model: "proxy/deepseek-v4-pro",
+    brain: "deepseek-v4-pro",
+    strategy: "direct",
+    promptTokens: 100,
+    completionTokens: 50,
+    totalTokens: 150,
+    costUsd: 0.001,
+    latencyMs: 1000,
+    status: "ok",
+    cacheHit: 0,
+    client: "openai",
+    ...over,
+  };
+}
 
 let tmpDir: string;
 
@@ -464,5 +483,33 @@ const mod = await import("../../../src/services/dashboardService");
     expect(msg).toContain("data:image/[REDACTED]");
     expect(msg).toContain("[BASE64]");
     svcRedact.close();
+  });
+});
+
+describe("windowed totals + windows field", () => {
+  it("totalsRow(rangeMs) excludes events older than now - rangeMs", async () => {
+    const { svc } = await freshService();
+    const now = Date.now();
+    svc.recordRequest(ev({ ts: now - 10 * 86_400_000, totalTokens: 1000 }));
+    svc.recordRequest(ev({ ts: now - 2 * 86_400_000, totalTokens: 2000 }));
+    svc.recordRequest(ev({ ts: now - 30 * 60 * 1000, totalTokens: 3000 }));
+    const snap = await svc.getSnapshot({ startTime: now, version: "test" });
+    expect(snap.metrics.windows["24h"].totalTokens).toBe(3000);
+    expect(snap.metrics.windows["7d"].totalTokens).toBe(5000);
+    expect(snap.metrics.windows["30d"].totalTokens).toBe(6000);
+    expect(snap.metrics.windows["90d"].totalTokens).toBe(6000);
+    expect(snap.metrics.windows["total"].totalTokens).toBe(6000);
+    svc.close();
+  });
+
+  it("snapshot includes all five window keys with requestCount matching tokens", async () => {
+    const { svc } = await freshService();
+    for (let i = 0; i < 5; i++) svc.recordRequest(ev({ ts: Date.now() - i * 1000 }));
+    const snap = await svc.getSnapshot({ startTime: Date.now(), version: "test" });
+    expect(Object.keys(snap.metrics.windows).sort()).toEqual(
+      ["24h", "30d", "7d", "90d", "total"],
+    );
+    expect(snap.metrics.windows["24h"].requestCount).toBe(5);
+    svc.close();
   });
 });

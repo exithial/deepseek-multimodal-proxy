@@ -72,11 +72,38 @@ export interface MetricsSnapshot {
     cacheMisses: number;
     cacheRatio: number;
   };
+  windows: Record<WindowKey, TotalsRow>;
   last24hHourly: HourBucket[];
   last30dDaily: HourBucket[];
   byModel: ModelBreakdown[];
   byBrain: ModelBreakdown[];
+  series?: {
+    fromTs: number;
+    toTs: number;
+    bucketMs: number;
+    buckets: HourBucket[];
+  };
 }
+
+export type TotalsRow = {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  costUsd: number;
+  requestCount: number;
+  errorCount: number;
+  cacheHits: number;
+};
+
+export type WindowKey = "24h" | "7d" | "30d" | "90d" | "total";
+
+const WINDOW_MS: Record<WindowKey, number> = {
+  "24h": 24 * 60 * 60 * 1000,
+  "7d": 7 * 24 * 60 * 60 * 1000,
+  "30d": 30 * 24 * 60 * 60 * 1000,
+  "90d": 90 * 24 * 60 * 60 * 1000,
+  total: Number.POSITIVE_INFINITY,
+};
 
 export interface LogLine {
   ts: string;
@@ -281,7 +308,8 @@ class DashboardService {
     }
 
     try {
-      const totals = this.totalsRow();
+      const windows = this.windowsRow();
+      const totals = windows.total;
       const metrics: MetricsSnapshot = {
         totals: {
           promptTokens: totals.promptTokens,
@@ -295,6 +323,7 @@ class DashboardService {
           cacheRatio:
             totals.requestCount > 0 ? totals.cacheHits / totals.requestCount : 0,
         },
+        windows,
         last24hHourly: this.hourlyBuckets(24, 60 * 60 * 1000),
         last30dDaily: this.hourlyBuckets(30, 24 * 60 * 60 * 1000),
         byModel: this.breakdown("model"),
@@ -317,37 +346,50 @@ class DashboardService {
     }
   }
 
-  private totalsRow(): {
-    promptTokens: number;
-    completionTokens: number;
-    totalTokens: number;
-    costUsd: number;
-    requestCount: number;
-    errorCount: number;
-    cacheHits: number;
-  } {
-    const row = this.db!
-      .prepare(
-        `SELECT
-           COALESCE(SUM(prompt_tokens), 0) AS promptTokens,
-           COALESCE(SUM(completion_tokens), 0) AS completionTokens,
-           COALESCE(SUM(total_tokens), 0) AS totalTokens,
-           COALESCE(SUM(cost_usd), 0) AS costUsd,
-           COUNT(*) AS requestCount,
-           COALESCE(SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END), 0) AS errorCount,
-           COALESCE(SUM(cache_hit), 0) AS cacheHits
-         FROM events`,
-      )
-      .get() as {
-      promptTokens: number;
-      completionTokens: number;
-      totalTokens: number;
-      costUsd: number;
-      requestCount: number;
-      errorCount: number;
-      cacheHits: number;
-    };
+  private totalsRow(rangeMs?: number): TotalsRow {
+    const hasWindow =
+      typeof rangeMs === "number" && Number.isFinite(rangeMs);
+    const row = (hasWindow
+      ? this.db!
+          .prepare(
+            `SELECT
+               COALESCE(SUM(prompt_tokens), 0) AS promptTokens,
+               COALESCE(SUM(completion_tokens), 0) AS completionTokens,
+               COALESCE(SUM(total_tokens), 0) AS totalTokens,
+               COALESCE(SUM(cost_usd), 0) AS costUsd,
+               COUNT(*) AS requestCount,
+               COALESCE(SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END), 0) AS errorCount,
+               COALESCE(SUM(cache_hit), 0) AS cacheHits
+             FROM events
+             WHERE ts >= ?`,
+          )
+          .get(Date.now() - (rangeMs as number))
+      : this.db!
+          .prepare(
+            `SELECT
+               COALESCE(SUM(prompt_tokens), 0) AS promptTokens,
+               COALESCE(SUM(completion_tokens), 0) AS completionTokens,
+               COALESCE(SUM(total_tokens), 0) AS totalTokens,
+               COALESCE(SUM(cost_usd), 0) AS costUsd,
+               COUNT(*) AS requestCount,
+               COALESCE(SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END), 0) AS errorCount,
+               COALESCE(SUM(cache_hit), 0) AS cacheHits
+             FROM events`,
+          )
+          .get()) as TotalsRow;
     return row;
+  }
+
+  private windowsRow(): Record<WindowKey, TotalsRow> {
+    const out = {} as Record<WindowKey, TotalsRow>;
+    for (const key of Object.keys(WINDOW_MS) as WindowKey[]) {
+      const ms = WINDOW_MS[key];
+      out[key] =
+        ms === Number.POSITIVE_INFINITY
+          ? this.totalsRow()
+          : this.totalsRow(ms);
+    }
+    return out;
   }
 
   private hourlyBuckets(count: number, bucketMs: number): HourBucket[] {
@@ -477,18 +519,29 @@ class DashboardService {
       errors: 0,
       cacheHits: 0,
     };
+    const emptyTotals: TotalsRow = {
+      promptTokens: 0,
+      completionTokens: 0,
+      totalTokens: 0,
+      costUsd: 0,
+      requestCount: 0,
+      errorCount: 0,
+      cacheHits: 0,
+    };
+    const emptyWindows = (Object.keys(WINDOW_MS) as WindowKey[]).reduce(
+      (acc, k) => {
+        acc[k] = { ...emptyTotals };
+        return acc;
+      },
+      {} as Record<WindowKey, TotalsRow>,
+    );
     return {
       totals: {
-        promptTokens: 0,
-        completionTokens: 0,
-        totalTokens: 0,
-        costUsd: 0,
-        requestCount: 0,
-        errorCount: 0,
-        cacheHits: 0,
+        ...emptyTotals,
         cacheMisses: 0,
         cacheRatio: 0,
       },
+      windows: emptyWindows,
       last24hHourly: Array(24).fill(zeroBucket).map((_, i) => ({ ...zeroBucket, ts: Date.now() - (24 - i) * 3_600_000 })),
       last30dDaily: Array(30).fill(zeroBucket).map((_, i) => ({ ...zeroBucket, ts: Date.now() - (30 - i) * 86_400_000 })),
       byModel: [],
