@@ -85,3 +85,37 @@ export function renderModelsRow(row, labels) {
     <td class="num" data-label="${label(9)}">${row.p95}</td>
   </tr>`;
 }
+
+const COMPACT_LOCALE = "es-ES";
+const COMPACT_FMT_NO_DECIMAL = new Intl.NumberFormat(COMPACT_LOCALE, {
+  maximumFractionDigits: 0,
+});
+const COMPACT_FMT_ONE_DECIMAL = new Intl.NumberFormat(COMPACT_LOCALE, {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
+const COMPACT_FMT_TWO_DECIMALS = new Intl.NumberFormat(COMPACT_LOCALE, {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+function compactValue(n) {
+  const abs = Math.abs(n);
+  if (abs < 1_000) return String(Math.trunc(n));
+  if (abs < 1_000_000) {
+    const v = n / 1_000;
+    return Number.isInteger(v) ? `${COMPACT_FMT_NO_DECIMAL.format(v)} K` : `${COMPACT_FMT_ONE_DECIMAL.format(v)} K`;
+  }
+  if (abs < 1_000_000_000) {
+    const v = n / 1_000_000;
+    return Number.isInteger(v) ? `${COMPACT_FMT_NO_DECIMAL.format(v)} M` : `${COMPACT_FMT_ONE_DECIMAL.format(v)} M`;
+  }
+  const v = n / 1_000_000_000;
+  return Number.isInteger(v) ? `${COMPACT_FMT_NO_DECIMAL.format(v)} B` : `${COMPACT_FMT_TWO_DECIMALS.format(v)} B`;
+}
+
+export function fmtCompact(value, opts) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
+  const body = compactValue(value);
+  return opts && opts.currency ? `$${body.replace(/\s/g, "")}` : body;
+}
