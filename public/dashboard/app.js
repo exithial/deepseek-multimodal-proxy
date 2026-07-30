@@ -59,6 +59,12 @@ const els = {
   disabledBanner: document.getElementById("disabled-banner"),
   range24h: document.getElementById("range-24h"),
   range30d: document.getElementById("range-30d"),
+  rangeCustomToggle: document.getElementById("range-custom-toggle"),
+  rangeCustom: document.getElementById("range-custom"),
+  rangeFrom: document.getElementById("range-from"),
+  rangeTo: document.getElementById("range-to"),
+  rangeApply: document.getElementById("range-apply"),
+  rangeLabel: document.getElementById("range-label"),
   tokensTag: document.querySelector(".card-tokens .card-tag"),
   cardRange24h: document.getElementById("card-range-24h"),
   cardRange7d: document.getElementById("card-range-7d"),
@@ -507,18 +513,90 @@ async function fetchSnapshot() {
   }
 }
 
-els.range24h.addEventListener("click", () => {
-  range = "24h";
-  els.range24h.classList.add("is-active");
-  els.range30d.classList.remove("is-active");
+function setChartRange(newRange) {
+  range = newRange;
+  chartRange = null;
+  els.range24h.classList.toggle("is-active", newRange === "24h");
+  els.range30d.classList.toggle("is-active", newRange === "30d");
+  els.rangeCustomToggle.classList.toggle("is-active", newRange === "custom");
+  if (newRange !== "custom" && els.rangeLabel) {
+    els.rangeLabel.textContent = "";
+  }
   if (lastSnapshot) renderChart(lastSnapshot);
+}
+
+els.range24h.addEventListener("click", () => setChartRange("24h"));
+els.range30d.addEventListener("click", () => setChartRange("30d"));
+
+els.rangeCustomToggle.addEventListener("click", () => {
+  els.rangeCustom.hidden = !els.rangeCustom.hidden;
+  if (!els.rangeCustom.hidden && els.rangeFrom) els.rangeFrom.focus();
 });
 
-els.range30d.addEventListener("click", () => {
-  range = "30d";
-  els.range30d.classList.add("is-active");
-  els.range24h.classList.remove("is-active");
-  if (lastSnapshot) renderChart(lastSnapshot);
+async function fetchRange(fromIso, toIso) {
+  const params = new URLSearchParams({ from: fromIso, to: toIso });
+  const res = await fetch(`/v1/dashboard/range?${params.toString()}`, {
+    cache: "no-store",
+    headers: { Accept: "application/json" },
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.message || body.error || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+function formatRangeLabel(fromIso, toIso) {
+  const fmtDate = new Intl.DateTimeFormat("es-ES", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "UTC",
+  });
+  return `${fmtDate.format(new Date(fromIso))} → ${fmtDate.format(new Date(toIso))} UTC`;
+}
+
+function renderCustomChart(snap) {
+  const buckets = snap.metrics.series?.buckets ?? [];
+  const bucketMs = snap.metrics.series?.bucketMs ?? 86_400_000;
+  const labels = buckets.map((b) => {
+    const d = new Date(b.ts);
+    if (bucketMs <= 60 * 60 * 1000) return `${d.getUTCHours()}h`;
+    return `${d.getUTCMonth() + 1}/${d.getUTCDate()}`;
+  });
+  if (!chart) {
+    chartRange = null;
+    renderChart(snap);
+    return;
+  }
+  chart.data.labels = labels;
+  chart.data.datasets[0].data = buckets.map((b) => b.promptTokens);
+  chart.data.datasets[1].data = buckets.map((b) => b.completionTokens);
+  chart.update("none");
+}
+
+els.rangeApply.addEventListener("click", async () => {
+  const fromVal = els.rangeFrom.value;
+  const toVal = els.rangeTo.value;
+  if (!fromVal || !toVal) {
+    els.errorBanner.hidden = false;
+    els.errorMsg.textContent = "dashboard: from y to son obligatorios";
+    return;
+  }
+  const fromIso = new Date(fromVal).toISOString();
+  const toIso = new Date(toVal).toISOString();
+  try {
+    const snap = await fetchRange(fromIso, toIso);
+    setChartRange("custom");
+    if (els.rangeLabel) {
+      els.rangeLabel.textContent = formatRangeLabel(fromIso, toIso);
+    }
+    renderCustomChart(snap);
+  } catch (err) {
+    els.errorBanner.hidden = false;
+    els.errorMsg.textContent = `dashboard: ${err.message || err}`;
+  }
 });
 
 els.logLevel.addEventListener("change", () => {

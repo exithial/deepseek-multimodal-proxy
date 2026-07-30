@@ -157,6 +157,15 @@
             <button type="button" class="seg-btn" data-range="30d" id="range-30d">
               30d
             </button>
+            <button type="button" class="seg-btn" id="range-custom-toggle">
+              custom
+            </button>
+            <div class="range-custom" id="range-custom" hidden>
+              <input type="datetime-local" id="range-from" class="search" />
+              <span class="range-sep">→</span>
+              <input type="datetime-local" id="range-to" class="search" />
+              <button type="button" class="btn" id="range-apply">apply</button>
+            </div>
           </div>
         </div>
         <div class="chart-wrap">
@@ -174,6 +183,7 @@
           <span class="legend-item legend-meta">
             <span>requests · errors</span>
           </span>
+          <span class="legend-item legend-meta" id="range-label"></span>
         </div>
       </section>
 

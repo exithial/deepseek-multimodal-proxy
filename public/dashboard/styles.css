@@ -993,3 +993,25 @@ body {
   color: var(--fg);
   border-color: var(--line);
 }
+
+.range-custom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.range-custom .range-sep {
+  color: var(--fg-faint);
+}
+
+#range-label {
+  font-style: italic;
+  color: var(--accent);
+}
+
+@media (max-width: 600px) {
+  .panel-controls {
+    flex-wrap: wrap;
+  }
+}
