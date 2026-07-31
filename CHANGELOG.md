@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Dashboard: windowed cards + historical range.** The hero now shows a range selector (`24h / 7d / 30d / 90d / total`) so the Σ total card always reflects a labeled window; large numbers are abbreviated (e.g. `48,8 M`). A new `GET /v1/dashboard/range?from=<iso>&to=<iso>` endpoint returns totals + an auto-bucketed series (hourly ≤48h, daily otherwise) capped at `DASHBOARD_RETENTION_DAYS`. The chart header gets a `custom` toggle with two `datetime-local` inputs that fetch the new endpoint and replace the series.
+
 ## [3.3.0] - 2026-07-24
 
 ### Added

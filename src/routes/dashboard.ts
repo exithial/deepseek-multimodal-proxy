@@ -50,6 +50,76 @@ export function mountDashboardRoutes(
     }
   });
 
+  app.get("/v1/dashboard/range", async (req: Request, res: Response) => {
+    if (!dashboardService.enabled) {
+      res.status(503).json({
+        error: "dashboard_disabled",
+        message: "Dashboard is disabled (DASHBOARD_ENABLED=false)",
+      });
+      return;
+    }
+    const from = req.query.from;
+    const to = req.query.to;
+    if (typeof from !== "string" || typeof to !== "string") {
+      res.status(400).json({
+        error: "missing_params",
+        message: "from and to are required ISO 8601 strings",
+      });
+      return;
+    }
+    const fromTs = Date.parse(from);
+    const toTs = Date.parse(to);
+    if (!Number.isFinite(fromTs) || !Number.isFinite(toTs)) {
+      res.status(400).json({
+        error: "invalid_timestamp",
+        message: "from/to must be valid ISO 8601",
+      });
+      return;
+    }
+    if (fromTs >= toTs) {
+      res.status(400).json({
+        error: "invalid_range",
+        message: "from must be < to",
+      });
+      return;
+    }
+    try {
+      const brainModels = getActiveBrainModels();
+      const passthroughs = Array.from(PASSTHROUGH_MODELS);
+      const activeModels = [
+        ...Object.keys(brainModels),
+        ...passthroughs,
+      ];
+      const snap = await dashboardService.getRange({
+        startTime: deps.startTime,
+        version: packageJson.version,
+        fromTs,
+        toTs,
+        mode: process.env.BRAIN_MODE || "auto",
+        providers: getActiveProviderInfo(),
+        activeModels,
+      });
+      res.set("Cache-Control", "no-store");
+      res.json(snap);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const retention = msg.match(/^range_exceeds_retention: maxMs=(\d+)/);
+      if (retention) {
+        res.status(400).json({
+          error: "range_exceeds_retention",
+          message: "range exceeds DASHBOARD_RETENTION_DAYS",
+          maxMs: Number(retention[1]),
+        });
+        return;
+      }
+      logger.error("Dashboard range failed:", err);
+      res.status(503).json({
+        error: "dashboard_unavailable",
+        message: msg,
+      });
+    }
+  });
+
   if (!fs.existsSync(PUBLIC_DIR)) {
     logger.warn(
       `Dashboard public dir no encontrado en ${PUBLIC_DIR}; UI no se servira`,

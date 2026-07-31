@@ -955,3 +955,67 @@ body {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* ─── global range selector ──────────────────────────────────────── */
+
+.range-custom {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.range-custom[hidden] {
+  display: none;
+}
+
+.range-custom .range-sep {
+  color: var(--fg-faint);
+  font-family: var(--mono);
+}
+
+.range-custom-label {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--fg-mute);
+}
+
+.range-custom-hint {
+  font-size: 10px;
+  color: var(--fg-faint);
+  font-style: italic;
+}
+
+.range-custom .search {
+  background: var(--bg, #0b0a0e);
+  border: 1px solid var(--line);
+  color: var(--fg);
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+.range-custom .btn {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--fg);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: var(--mono);
+}
+
+.range-custom .btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}

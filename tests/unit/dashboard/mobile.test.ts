@@ -4,6 +4,7 @@ import {
   chartTickScale,
   modelHeaderLabels,
   renderModelsRow,
+  fmtCompact,
 } from "../../../public/dashboard/mobile.js";
 
 describe("chartTickScale", () => {
@@ -129,5 +130,51 @@ describe("renderModelsRow", () => {
     expect(() => renderModelsRow(sampleRow, undefined as unknown as string[])).toThrowError(
       /expected 10 column headers/,
     );
+  });
+});
+
+describe("fmtCompact", () => {
+  it("renders NaN/Infinity as em-dash", () => {
+    expect(fmtCompact(NaN)).toBe("—");
+    expect(fmtCompact(Infinity)).toBe("—");
+    expect(fmtCompact(-Infinity)).toBe("—");
+  });
+
+  it("renders 0 as '0'", () => {
+    expect(fmtCompact(0)).toBe("0");
+  });
+
+  it("renders integers below 1000 verbatim", () => {
+    expect(fmtCompact(7)).toBe("7");
+    expect(fmtCompact(999)).toBe("999");
+  });
+
+  it("renders thousands with a space before K", () => {
+    expect(fmtCompact(1000)).toBe("1 K");
+    expect(fmtCompact(12_345)).toBe("12,3 K");
+    expect(fmtCompact(12_500)).toBe("12,5 K");
+    expect(fmtCompact(847_000)).toBe("847 K");
+  });
+
+  it("renders millions with one decimal when not round", () => {
+    expect(fmtCompact(1_234_567)).toBe("1,2 M");
+    expect(fmtCompact(48_844_860)).toBe("48,8 M");
+    expect(fmtCompact(2_000_000)).toBe("2 M");
+  });
+
+  it("renders billions with two decimals when not round", () => {
+    expect(fmtCompact(1_234_567_890)).toBe("1,23 B");
+    expect(fmtCompact(2_000_000_000)).toBe("2 B");
+  });
+
+  it("handles negative numbers", () => {
+    expect(fmtCompact(-12_500)).toBe("-12,5 K");
+  });
+
+  it("prefixes $ when currency:true and keeps sub-1000 full", () => {
+    expect(fmtCompact(847, { currency: true })).toBe("$847");
+    expect(fmtCompact(1234, { currency: true })).toBe("$1,2K");
+    expect(fmtCompact(12_500, { currency: true })).toBe("$12,5K");
+    expect(fmtCompact(1_234_567, { currency: true })).toBe("$1,2M");
   });
 });

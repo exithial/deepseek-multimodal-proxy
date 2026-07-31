@@ -61,22 +61,47 @@ export interface ModelBreakdown {
 }
 
 export interface MetricsSnapshot {
-  totals: {
-    promptTokens: number;
-    completionTokens: number;
-    totalTokens: number;
-    costUsd: number;
-    requestCount: number;
-    errorCount: number;
-    cacheHits: number;
+  totals: TotalsRow & {
     cacheMisses: number;
     cacheRatio: number;
   };
+  windows: Record<WindowKey, WindowBreakdown>;
   last24hHourly: HourBucket[];
   last30dDaily: HourBucket[];
   byModel: ModelBreakdown[];
   byBrain: ModelBreakdown[];
+  series?: {
+    fromTs: number;
+    toTs: number;
+    bucketMs: number;
+    buckets: HourBucket[];
+  };
 }
+
+export type TotalsRow = {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  costUsd: number;
+  requestCount: number;
+  errorCount: number;
+  cacheHits: number;
+};
+
+export type WindowBreakdown = TotalsRow & {
+  byModel: ModelBreakdown[];
+  byBrain: ModelBreakdown[];
+};
+
+export type WindowKey = "24h" | "7d" | "30d" | "90d" | "total";
+
+const WINDOW_MS: Record<WindowKey, number> = {
+  "24h": 24 * 60 * 60 * 1000,
+  "7d": 7 * 24 * 60 * 60 * 1000,
+  "30d": 30 * 24 * 60 * 60 * 1000,
+  "90d": 90 * 24 * 60 * 60 * 1000,
+  total: Number.POSITIVE_INFINITY,
+};
 
 export interface LogLine {
   ts: string;
@@ -281,7 +306,8 @@ class DashboardService {
     }
 
     try {
-      const totals = this.totalsRow();
+      const windows = this.windowsRow();
+      const totals = windows.total;
       const metrics: MetricsSnapshot = {
         totals: {
           promptTokens: totals.promptTokens,
@@ -295,6 +321,7 @@ class DashboardService {
           cacheRatio:
             totals.requestCount > 0 ? totals.cacheHits / totals.requestCount : 0,
         },
+        windows,
         last24hHourly: this.hourlyBuckets(24, 60 * 60 * 1000),
         last30dDaily: this.hourlyBuckets(30, 24 * 60 * 60 * 1000),
         byModel: this.breakdown("model"),
@@ -317,15 +344,7 @@ class DashboardService {
     }
   }
 
-  private totalsRow(): {
-    promptTokens: number;
-    completionTokens: number;
-    totalTokens: number;
-    costUsd: number;
-    requestCount: number;
-    errorCount: number;
-    cacheHits: number;
-  } {
+  private totalsInRange(fromTs: number, toTs: number): TotalsRow {
     const row = this.db!
       .prepare(
         `SELECT
@@ -336,9 +355,99 @@ class DashboardService {
            COUNT(*) AS requestCount,
            COALESCE(SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END), 0) AS errorCount,
            COALESCE(SUM(cache_hit), 0) AS cacheHits
-         FROM events`,
+         FROM events
+         WHERE ts >= ? AND ts < ?`,
       )
-      .get() as {
+      .get(fromTs, toTs) as TotalsRow;
+    return row;
+  }
+
+  private hourlyBucketsInRange(
+    fromTs: number,
+    toTs: number,
+    bucketMs: number,
+  ): HourBucket[] {
+    const buckets: HourBucket[] = [];
+    const firstBucketStart = fromTs - (fromTs % bucketMs);
+    const lastBucketStart = toTs - (toTs % bucketMs);
+    for (let start = firstBucketStart; start <= lastBucketStart; start += bucketMs) {
+      buckets.push({
+        ts: start,
+        promptTokens: 0,
+        completionTokens: 0,
+        totalTokens: 0,
+        requests: 0,
+        errors: 0,
+        cacheHits: 0,
+      });
+    }
+    const rows = this.db!
+      .prepare(
+        `SELECT
+           CAST(ts / ? AS INTEGER) * ? AS bucketTs,
+           COALESCE(SUM(prompt_tokens), 0) AS promptTokens,
+           COALESCE(SUM(completion_tokens), 0) AS completionTokens,
+           COALESCE(SUM(total_tokens), 0) AS totalTokens,
+           COUNT(*) AS requests,
+           COALESCE(SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END), 0) AS errors,
+           COALESCE(SUM(cache_hit), 0) AS cacheHits
+         FROM events
+         WHERE ts >= ? AND ts < ?
+         GROUP BY bucketTs`,
+      )
+      .all(bucketMs, bucketMs, fromTs, toTs) as Array<{
+      bucketTs: number;
+      promptTokens: number;
+      completionTokens: number;
+      totalTokens: number;
+      requests: number;
+      errors: number;
+      cacheHits: number;
+    }>;
+    const byTs = new Map<number, (typeof rows)[number]>();
+    for (const r of rows) byTs.set(r.bucketTs, r);
+    return buckets.map((b) => {
+      const r = byTs.get(b.ts);
+      if (!r) return b;
+      return {
+        ts: b.ts,
+        promptTokens: r.promptTokens,
+        completionTokens: r.completionTokens,
+        totalTokens: r.totalTokens,
+        requests: r.requests,
+        errors: r.errors,
+        cacheHits: r.cacheHits,
+      };
+    });
+  }
+
+  private breakdownInRange(
+    fromTs: number,
+    toTs: number,
+    groupBy: "model" | "brain",
+  ): ModelBreakdown[] {
+    const cols =
+      groupBy === "model"
+        ? `model AS model, brain AS brain`
+        : `brain AS model, brain AS brain`;
+    const rows = this.db!
+      .prepare(
+        `SELECT ${cols},
+           COALESCE(SUM(prompt_tokens), 0) AS promptTokens,
+           COALESCE(SUM(completion_tokens), 0) AS completionTokens,
+           COALESCE(SUM(total_tokens), 0) AS totalTokens,
+           COALESCE(SUM(cost_usd), 0) AS costUsd,
+           COUNT(*) AS requestCount,
+           COALESCE(SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END), 0) AS errorCount,
+           COALESCE(SUM(cache_hit), 0) AS cacheHits
+         FROM events
+         WHERE ts >= ? AND ts < ?
+         GROUP BY model, brain
+         ORDER BY requestCount DESC`,
+      )
+      .all(fromTs, toTs) as Array<{
+      model: string;
+      brain: string;
       promptTokens: number;
       completionTokens: number;
       totalTokens: number;
@@ -346,8 +455,216 @@ class DashboardService {
       requestCount: number;
       errorCount: number;
       cacheHits: number;
+    }>;
+    return rows.map((r) => ({
+      ...r,
+      latencyMs: this.latencyPercentiles(r.model, r.brain),
+    }));
+  }
+
+  private windowBreakdown(
+    windowMs: number,
+    nowMs: number | undefined,
+  ): WindowBreakdown {
+    const now = typeof nowMs === "number" ? nowMs : Date.now();
+    const totals =
+      windowMs === Number.POSITIVE_INFINITY
+        ? this.totalsRow(undefined, now)
+        : this.totalsRow(windowMs, now);
+    return {
+      ...totals,
+      byModel: this.breakdownForWindow(windowMs, now, "model"),
+      byBrain: this.breakdownForWindow(windowMs, now, "brain"),
     };
+  }
+
+  async getRange(args: {
+    startTime: number;
+    version: string;
+    fromTs: number;
+    toTs: number;
+    mode?: string;
+    providers?: unknown;
+    activeModels?: string[];
+  }): Promise<DashboardSnapshot> {
+    if (!this.db || !this.enabled) {
+      throw new Error("dashboard_disabled");
+    }
+    if (
+      typeof args.fromTs !== "number" ||
+      typeof args.toTs !== "number" ||
+      !Number.isFinite(args.fromTs) ||
+      !Number.isFinite(args.toTs)
+    ) {
+      throw new Error("invalid_timestamp");
+    }
+    if (args.fromTs >= args.toTs) {
+      throw new Error("invalid_range: fromTs must be < toTs");
+    }
+    const span = args.toTs - args.fromTs;
+    const retentionMs = this.retentionDays * 86_400_000;
+    if (span > retentionMs) {
+      throw new Error(`range_exceeds_retention: maxMs=${retentionMs}`);
+    }
+
+    const bucketMs = span <= 48 * 60 * 60 * 1000 ? 60 * 60 * 1000 : 86_400_000;
+    const buckets = this.hourlyBucketsInRange(args.fromTs, args.toTs, bucketMs);
+    const rangeTotals = this.totalsInRange(args.fromTs, args.toTs);
+
+    const windows: Record<WindowKey, WindowBreakdown> = {
+      "24h": this.windowBreakdown(WINDOW_MS["24h"], args.toTs),
+      "7d": this.windowBreakdown(WINDOW_MS["7d"], args.toTs),
+      "30d": this.windowBreakdown(WINDOW_MS["30d"], args.toTs),
+      "90d": this.windowBreakdown(WINDOW_MS["90d"], args.toTs),
+      total: this.windowBreakdown(Number.POSITIVE_INFINITY, args.toTs),
+    };
+
+    const operational: OperationalInfo = {
+      version: args.version,
+      uptimeSeconds: Math.max(0, Math.floor((Date.now() - args.startTime) / 1000)),
+      mode: args.mode || (process.env.BRAIN_MODE || "auto"),
+      providers: args.providers ?? null,
+      activeModels: args.activeModels ?? [],
+      pollIntervalMs: this.pollIntervalMs,
+      logTailLines: this.logTailLines,
+      dashboardEnabled: this.enabled,
+    };
+
+    return {
+      operational,
+      metrics: {
+        totals: {
+          ...rangeTotals,
+          cacheMisses: Math.max(0, rangeTotals.requestCount - rangeTotals.cacheHits),
+          cacheRatio:
+            rangeTotals.requestCount > 0
+              ? rangeTotals.cacheHits / rangeTotals.requestCount
+              : 0,
+        },
+        windows,
+        last24hHourly: [],
+        last30dDaily: [],
+        byModel: this.breakdownInRange(args.fromTs, args.toTs, "model"),
+        byBrain: this.breakdownInRange(args.fromTs, args.toTs, "brain"),
+        series: {
+          fromTs: args.fromTs,
+          toTs: args.toTs,
+          bucketMs,
+          buckets,
+        },
+      },
+      recentLogs: this.readRecentLogs(),
+      cacheStats: await this.safeCacheStats(),
+    };
+  }
+
+  private totalsRow(rangeMs?: number, nowMs?: number): TotalsRow {
+    const hasWindow =
+      typeof rangeMs === "number" && Number.isFinite(rangeMs);
+    const now = typeof nowMs === "number" ? nowMs : Date.now();
+    const row = (hasWindow
+      ? this.db!
+          .prepare(
+            `SELECT
+               COALESCE(SUM(prompt_tokens), 0) AS promptTokens,
+               COALESCE(SUM(completion_tokens), 0) AS completionTokens,
+               COALESCE(SUM(total_tokens), 0) AS totalTokens,
+               COALESCE(SUM(cost_usd), 0) AS costUsd,
+               COUNT(*) AS requestCount,
+               COALESCE(SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END), 0) AS errorCount,
+               COALESCE(SUM(cache_hit), 0) AS cacheHits
+             FROM events
+             WHERE ts >= ?`,
+          )
+          .get(now - (rangeMs as number))
+      : this.db!
+          .prepare(
+            `SELECT
+               COALESCE(SUM(prompt_tokens), 0) AS promptTokens,
+               COALESCE(SUM(completion_tokens), 0) AS completionTokens,
+               COALESCE(SUM(total_tokens), 0) AS totalTokens,
+               COALESCE(SUM(cost_usd), 0) AS costUsd,
+               COUNT(*) AS requestCount,
+               COALESCE(SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END), 0) AS errorCount,
+               COALESCE(SUM(cache_hit), 0) AS cacheHits
+             FROM events`,
+          )
+          .get()) as TotalsRow;
     return row;
+  }
+
+  private windowsRow(nowMs?: number): Record<WindowKey, WindowBreakdown> {
+    const out = {} as Record<WindowKey, WindowBreakdown>;
+    for (const key of Object.keys(WINDOW_MS) as WindowKey[]) {
+      const ms = WINDOW_MS[key];
+      const totals =
+        ms === Number.POSITIVE_INFINITY
+          ? this.totalsRow(undefined, nowMs)
+          : this.totalsRow(ms, nowMs);
+      out[key] = {
+        ...totals,
+        byModel: this.breakdownForWindow(ms, nowMs, "model"),
+        byBrain: this.breakdownForWindow(ms, nowMs, "brain"),
+      };
+    }
+    return out;
+  }
+
+  private breakdownForWindow(
+    windowMs: number,
+    nowMs: number | undefined,
+    groupBy: "model" | "brain",
+  ): ModelBreakdown[] {
+    const now = typeof nowMs === "number" ? nowMs : Date.now();
+    const cutoff =
+      windowMs === Number.POSITIVE_INFINITY
+        ? null
+        : now - windowMs;
+    const cols =
+      groupBy === "model"
+        ? `model AS model, brain AS brain`
+        : `brain AS model, brain AS brain`;
+    const sql = cutoff === null
+      ? `SELECT ${cols},
+           COALESCE(SUM(prompt_tokens), 0) AS promptTokens,
+           COALESCE(SUM(completion_tokens), 0) AS completionTokens,
+           COALESCE(SUM(total_tokens), 0) AS totalTokens,
+           COALESCE(SUM(cost_usd), 0) AS costUsd,
+           COUNT(*) AS requestCount,
+           COALESCE(SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END), 0) AS errorCount,
+           COALESCE(SUM(cache_hit), 0) AS cacheHits
+         FROM events
+         GROUP BY model, brain
+         ORDER BY requestCount DESC`
+      : `SELECT ${cols},
+           COALESCE(SUM(prompt_tokens), 0) AS promptTokens,
+           COALESCE(SUM(completion_tokens), 0) AS completionTokens,
+           COALESCE(SUM(total_tokens), 0) AS totalTokens,
+           COALESCE(SUM(cost_usd), 0) AS costUsd,
+           COUNT(*) AS requestCount,
+           COALESCE(SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END), 0) AS errorCount,
+           COALESCE(SUM(cache_hit), 0) AS cacheHits
+         FROM events
+         WHERE ts >= ?
+         GROUP BY model, brain
+         ORDER BY requestCount DESC`;
+    const rows = (cutoff === null
+      ? this.db!.prepare(sql).all()
+      : this.db!.prepare(sql).all(cutoff)) as Array<{
+      model: string;
+      brain: string;
+      promptTokens: number;
+      completionTokens: number;
+      totalTokens: number;
+      costUsd: number;
+      requestCount: number;
+      errorCount: number;
+      cacheHits: number;
+    }>;
+    return rows.map((r) => ({
+      ...r,
+      latencyMs: this.latencyPercentiles(r.model, r.brain),
+    }));
   }
 
   private hourlyBuckets(count: number, bucketMs: number): HourBucket[] {
@@ -477,18 +794,29 @@ class DashboardService {
       errors: 0,
       cacheHits: 0,
     };
+    const emptyTotals: TotalsRow = {
+      promptTokens: 0,
+      completionTokens: 0,
+      totalTokens: 0,
+      costUsd: 0,
+      requestCount: 0,
+      errorCount: 0,
+      cacheHits: 0,
+    };
+    const emptyWindows = (Object.keys(WINDOW_MS) as WindowKey[]).reduce(
+      (acc, k) => {
+        acc[k] = { ...emptyTotals, byModel: [], byBrain: [] };
+        return acc;
+      },
+      {} as Record<WindowKey, WindowBreakdown>,
+    );
     return {
       totals: {
-        promptTokens: 0,
-        completionTokens: 0,
-        totalTokens: 0,
-        costUsd: 0,
-        requestCount: 0,
-        errorCount: 0,
-        cacheHits: 0,
+        ...emptyTotals,
         cacheMisses: 0,
         cacheRatio: 0,
       },
+      windows: emptyWindows,
       last24hHourly: Array(24).fill(zeroBucket).map((_, i) => ({ ...zeroBucket, ts: Date.now() - (24 - i) * 3_600_000 })),
       last30dDaily: Array(30).fill(zeroBucket).map((_, i) => ({ ...zeroBucket, ts: Date.now() - (30 - i) * 86_400_000 })),
       byModel: [],
