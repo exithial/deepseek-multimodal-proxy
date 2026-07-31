@@ -176,21 +176,21 @@
         </div>
         <div class="table-wrap">
           <table class="data-table" id="models-table">
-            <thead>
+            <thead id="models-table-head">
               <tr>
-                <th>modelo</th>
-                <th>brain</th>
-                <th class="num">in</th>
-                <th class="num">out</th>
-                <th class="num">USD</th>
-                <th class="num">req</th>
-                <th class="num">err</th>
-                <th class="num">cache</th>
-                <th class="num">p50</th>
-                <th class="num">p95</th>
+                <th scope="col">modelo</th>
+                <th scope="col">brain</th>
+                <th class="num" scope="col">in</th>
+                <th class="num" scope="col">out</th>
+                <th class="num" scope="col">USD</th>
+                <th class="num" scope="col">req</th>
+                <th class="num" scope="col">err</th>
+                <th class="num" scope="col">cache</th>
+                <th class="num" scope="col">p50</th>
+                <th class="num" scope="col">p95</th>
               </tr>
             </thead>
-            <tbody id="models-tbody"></tbody>
+            <tbody id="models-tbody" role="list"></tbody>
           </table>
         </div>
       </section>

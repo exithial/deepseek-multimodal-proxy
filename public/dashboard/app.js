@@ -1,3 +1,10 @@
+import {
+  chartTickScale,
+  escapeHtml,
+  modelHeaderLabels,
+  renderModelsRow,
+} from "./mobile.js";
+
 const fmt = new Intl.NumberFormat("es-ES");
 // USD is conventionally formatted with '.' as the decimal separator
 // and ',' as the thousands separator regardless of the viewer's
@@ -11,14 +18,6 @@ const fmtPct = new Intl.NumberFormat("es-ES", {
   minimumFractionDigits: 1,
   maximumFractionDigits: 1,
 });
-
-const HTML_ESCAPES = {
-  "&": "&amp;",
-  "<": "&lt;",
-  ">": "&gt;",
-  '"': "&quot;",
-  "'": "&#39;",
-};
 
 let chart = null;
 let chartRange = null;
@@ -151,6 +150,7 @@ function renderChart(snap) {
       const ctx = canvas.getContext("2d");
       const gridColor = "rgba(241, 234, 215, 0.06)";
       const tickColor = "rgba(241, 234, 215, 0.4)";
+      const tickScale = chartTickScale(window.innerWidth);
 
       chart = new Chart(ctx, {
         type: "line",
@@ -216,10 +216,13 @@ function renderChart(snap) {
               border: { display: false },
               ticks: {
                 color: tickColor,
-                font: { family: "JetBrains Mono", size: 10 },
+                font: { family: "JetBrains Mono", size: tickScale.xFont },
                 maxRotation: 0,
                 autoSkip: true,
-                maxTicksLimit: range === "24h" ? 12 : 10,
+                maxTicksLimit:
+                  range === "24h"
+                    ? tickScale.xMaxTicks
+                    : Math.min(tickScale.xMaxTicks, 10),
               },
             },
             y: {
@@ -227,7 +230,7 @@ function renderChart(snap) {
               border: { display: false },
               ticks: {
                 color: tickColor,
-                font: { family: "JetBrains Mono", size: 10 },
+                font: { family: "JetBrains Mono", size: tickScale.yFont },
                 callback: (v) => fmt.format(v),
                 maxTicksLimit: 5,
               },
@@ -282,25 +285,40 @@ function renderModels(snap) {
   els.modelCount.textContent = `${rows.length} ${rows.length === 1 ? "modelo" : "modelos"}`;
   if (rows.length === 0) {
     els.modelsTbody.innerHTML =
-      '<tr><td colspan="10" class="empty-row">sin eventos todavia — espera a que llegue el primer request</td></tr>';
+      '<tr><td colspan="10" class="empty-row" data-label="estado">sin eventos todavia — espera a que llegue el primer request</td></tr>';
     return;
   }
+  const headerThs = document.querySelectorAll("#models-table-head th");
+  const headerLabels = modelHeaderLabels(
+    [...headerThs].map((th) => th.textContent ?? ""),
+  );
   els.modelsTbody.innerHTML = rows
     .map((m) => {
-      const errClass = m.errorCount > 0 ? "col-err" : "";
-      const cacheClass = m.cacheHits > 0 ? "col-cache" : "";
-      return `<tr>
-        <td class="col-model">${escape(m.model)}</td>
-        <td class="col-brain">${escape(m.brain)}</td>
-        <td class="num">${fmtFinite(m.promptTokens, fmt.format)}</td>
-        <td class="num">${fmtFinite(m.completionTokens, fmt.format)}</td>
-        <td class="num col-cost">$${fmtFinite(m.costUsd, fmtCost.format)}</td>
-        <td class="num">${fmtFinite(m.requestCount, fmt.format)}</td>
-        <td class="num ${errClass}">${fmtFinite(m.errorCount, fmt.format)}</td>
-        <td class="num ${cacheClass}">${fmtFinite(m.cacheHits, fmt.format)}</td>
-        <td class="num">${fmtFinite(m.latencyMs.p50, (v) => `${v}ms`)}</td>
-        <td class="num">${fmtFinite(m.latencyMs.p95, (v) => `${v}ms`)}</td>
-      </tr>`;
+      const promptTokens = fmtFinite(m.promptTokens, fmt.format);
+      const completionTokens = fmtFinite(m.completionTokens, fmt.format);
+      const cost = fmtFinite(m.costUsd, fmtCost.format);
+      const req = fmtFinite(m.requestCount, fmt.format);
+      const err = fmtFinite(m.errorCount, fmt.format);
+      const hits = fmtFinite(m.cacheHits, fmt.format);
+      const p50 = fmtFinite(m.latencyMs.p50, (v) => `${v}ms`);
+      const p95 = fmtFinite(m.latencyMs.p95, (v) => `${v}ms`);
+      return renderModelsRow(
+        {
+          model: m.model,
+          brain: m.brain,
+          promptTokens,
+          completionTokens,
+          cost,
+          req,
+          err,
+          hits,
+          p50,
+          p95,
+          errorCount: m.errorCount,
+          cacheHits: m.cacheHits,
+        },
+        headerLabels,
+      );
     })
     .join("");
 }
@@ -368,7 +386,7 @@ function renderLogs(snap) {
   pane.innerHTML = slice
     .map((l) => {
       const ts = l.ts || "—";
-      return `<span class="log-line l-${escape(l.level)}"><span class="log-ts">${escape(ts)}</span><span class="lvl">${escape(l.level)}</span>${escape(l.message)}</span>`;
+      return `<span class="log-line l-${escapeHtml(l.level)}"><span class="log-ts">${escapeHtml(ts)}</span><span class="lvl">${escapeHtml(l.level)}</span>${escapeHtml(l.message)}</span>`;
     })
     .join("");
   if (wasAtBottom) pane.scrollTop = pane.scrollHeight;
@@ -477,10 +495,6 @@ async function fetchSnapshot() {
   }
 }
 
-function escape(s) {
-  return String(s ?? "").replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]);
-}
-
 els.range24h.addEventListener("click", () => {
   range = "24h";
   els.range24h.classList.add("is-active");
@@ -519,6 +533,24 @@ window.addEventListener("pagehide", () => {
     clearInterval(pollTimer);
     pollTimer = null;
   }
+});
+
+// Re-render the chart when the viewport crosses the 600 px breakpoint so
+// the Fold6 cover → unfolded transition updates the tick density without
+// a full page reload. Debounced to 150 ms; only fires when crossing the
+// breakpoint to avoid the visual "rebirth" flicker.
+let previousNarrow = window.innerWidth <= 600;
+let resizeDebounce = null;
+window.addEventListener("resize", () => {
+  if (resizeDebounce) clearTimeout(resizeDebounce);
+  resizeDebounce = setTimeout(() => {
+    resizeDebounce = null;
+    const currentNarrow = window.innerWidth <= 600;
+    if (currentNarrow !== previousNarrow) {
+      previousNarrow = currentNarrow;
+      if (lastSnapshot) renderChart(lastSnapshot);
+    }
+  }, 150);
 });
 
 // Fail loud at boot if any element ID is missing from the HTML — a

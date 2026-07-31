@@ -228,6 +228,10 @@ What you get:
 - **Log tail** — last 200 lines of `combined.log` + `error.log` with level filter and substring search; "refresh" button for on-demand reload
 - **Footer** — version, BRAIN_MODE, providers, log tail length
 
+### Mobile layout
+
+The UI is responsive down to the Galaxy Z Fold6 cover screen (~320 CSS px). On ≤600 px the hero cards stack into a single column, the models table becomes a stack of per-model cards (every cell carries a `data-label` so the label/value layout is data-driven, not duplicated), the logs controls flow into a 2-column grid with `select` spanning the full width and 44 px touch targets, and the footer reorganizes into a 2-column grid at ≤480 px. The chart tick density adapts via the `chartTickScale` helper and re-renders on the 600 px boundary when the viewport crosses. Above 1100 px the desktop layout is unchanged.
+
 Live updates are pure polling: the server tells the client the cadence via `operational.poll_interval_ms` (default 10s). The UI honors that value; no SSE/WebSocket.
 
 ### Env vars

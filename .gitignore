@@ -23,3 +23,6 @@ graphify-out/
 
 # Codebase-memory knowledge graph (regenerated locally, not committed)
 .codebase-memory/
+
+# Superpowers brainstorm scratch space (regenerated locally, not committed)
+.superpowers/
