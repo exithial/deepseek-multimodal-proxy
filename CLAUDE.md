@@ -11,7 +11,7 @@
 - Text/code -> proxy/<brain> direct; images -> MiMo V2.5 -> brain; audio/video/PDF -> Gemini -> brain
 - Brain selection: `proxy/<model-id>` for text-only models, passthrough for natively multimodal
 - Natively multimodal model (mimo-v2.5) bypasses the senses layer
-- All brains use max thinking (`thinking: { type: "enabled" }`)
+- All brains use max thinking (`thinking: { type: "enabled" }`). Direct DeepSeek V4 Pro/Flash additionally set `reasoning_effort: "max"` (restored from v2.0.0 default; OpenCode Go brains inherit the upstream default).
 - Retry with exponential backoff (3 attempts, 2s/4s delays) on503/502/429
 
 ## Modes
