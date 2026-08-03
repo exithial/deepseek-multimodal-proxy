@@ -8,6 +8,7 @@
 |----------|----------|----------|----------|---------|------------|---------------------|---------------------------|
 | `proxy/glm-5.2` | `glm-5.2` | OpenAI | ✅ Always-on | 800K¹ | 131K | $1.40 / $4.40 | $1.54 / $4.40 |
 | `proxy/deepseek-v4-pro` | `deepseek-v4-pro` | OpenAI | ✅ Always-on | 800K¹ | 384K | $0.435 / $0.87 | $0.575 / $1.15 |
+| `proxy/deepseek-v4-flash` | `deepseek-v4-flash` | OpenAI | ✅ Always-on | 800K¹ | 384K | $0.14 / $0.28 | (your account, BRAIN_MODE=deepseek) |
 | `proxy/qwen3.7-max` | `qwen3.7-max` | Anthropic | ✅ Always-on | 800K¹ | 65K | $2.50 / $7.50 | $2.64 / $7.78 |
 | `proxy/mimo-v2.5-pro` | `mimo-v2.5-pro` | OpenAI | ✅ Always-on | 800K¹ | 65K | $1.74 / $3.48 | $1.88 / $3.76 |
 | `proxy/local-deepseek-v4-pro`  | `deepseek-v4-pro` | OpenAI | ✅ | 800K | 384K | $0.435 / $0.87 | (your account) |
@@ -97,6 +98,5 @@ These models were in the brain catalog but removed in v3.0.0:
 | `proxy/glm-5.1` | Removed — consolidated to 2 brains (later expanded to 4) |
 | `proxy/qwen3.7-plus` | Removed — consolidated to 2 brains (later expanded to 4) |
 | `proxy/qwen3.6-plus` | Removed — consolidated to 2 brains (later expanded to 4) |
-| `proxy/deepseek-v4-flash` | Removed — consolidated to 2 brains (later expanded to 4) |
 | `minimax-m3` (passthrough) | Removed — only mimo-v2.5 kept as passthrough |
 | `minimax-m2.7` (passthrough) | Removed — only mimo-v2.5 kept as passthrough |
