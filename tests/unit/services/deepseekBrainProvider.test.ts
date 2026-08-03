@@ -52,6 +52,7 @@ describe("DeepSeekBrainProvider", () => {
     );
     expect(payload.model).toBe("deepseek-v4-pro");
     expect(payload.thinking).toEqual({ type: "enabled" });
+    expect(payload.reasoning_effort).toBe("max");
   });
 
   it("buildPayload omits thinking when entry.thinking=false", async () => {
@@ -67,6 +68,7 @@ describe("DeepSeekBrainProvider", () => {
       "openai",
     );
     expect(payload.thinking).toBeUndefined();
+    expect(payload.reasoning_effort).toBeUndefined();
   });
 
   it("createChatCompletion POSTs to DEEPSEEK_BASE_URL/chat/completions with Bearer auth", async () => {
@@ -132,5 +134,22 @@ describe("DeepSeekBrainProvider", () => {
       "../../../src/services/deepseekBrainProvider"
     );
     expect(deepseekBrainProvider.name).toBe("deepseek-direct");
+  });
+
+  it("buildPayload sets reasoning_effort: max for deepseek-v4-flash upstream", async () => {
+    vi.stubEnv("DEEPSEEK_API_KEY", "sk-test-deepseek");
+    const { deepseekBrainProvider } = await import(
+      "../../../src/services/deepseekBrainProvider"
+    );
+    const payload = deepseekBrainProvider.buildPayload(
+      { model: "x", messages: [{ role: "user" as const, content: "hi" }] },
+      "deepseek-v4-flash",
+      true,
+      1_048_576,
+      "openai",
+    );
+    expect(payload.model).toBe("deepseek-v4-flash");
+    expect(payload.thinking).toEqual({ type: "enabled" });
+    expect(payload.reasoning_effort).toBe("max");
   });
 });

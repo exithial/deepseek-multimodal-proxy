@@ -64,7 +64,10 @@ export class DeepSeekBrainProvider implements BrainProvider {
     if (request.tools) payload.tools = request.tools;
     if (request.tool_choice !== undefined) payload.tool_choice = request.tool_choice;
     if (request.response_format !== undefined) payload.response_format = request.response_format;
-    if (thinking) payload.thinking = { type: "enabled" };
+    if (thinking) {
+      payload.thinking = { type: "enabled" };
+      payload.reasoning_effort = "max";
+    }
 
     return payload;
   }

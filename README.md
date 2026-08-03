@@ -46,6 +46,7 @@ To switch modes, set `BRAIN_MODE` in `.env` and restart. Existing clients (`open
 | `proxy/mimo-v2.5-pro` | $1.74 / $3.48 per 1M (combined $1.88 / $3.76 with senses) | OpenCode Go brain |
 | `proxy/local-deepseek-v4-pro`  | DeepSeek V4 Pro via your account (BRAIN_MODE=hybrid) | User-billed |
 | `proxy/local-deepseek-v4-flash` | DeepSeek V4 Flash via your account (BRAIN_MODE=hybrid) | User-billed |
+| `proxy/deepseek-v4-flash` | DeepSeek V4 Flash via your account (BRAIN_MODE=deepseek) | User-billed |
 | `mimo-v2.5` (passthrough) | $0.14 / $0.28 per 1M | BRAIN_MODE=opencode/hybrid |
 | `MiniMax-M3` (passthrough) | Anthropic-format, billed by MiniMax | BRAIN_MODE=deepseek/hybrid |
 
@@ -151,6 +152,48 @@ Add to `~/.config/opencode/opencode.json`:
   }
 }
 ```
+
+### For BRAIN_MODE=deepseek
+
+Use `opencode.deepseek.json` from the repo root (or copy its contents into `~/.config/opencode/opencode.json`). This file declares `proxy/deepseek-v4-pro` and `proxy/deepseek-v4-flash` (both routed via your DeepSeek account) plus the `MiniMax-M3` passthrough.
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "cortex-multimodal": {
+      "name": "Cortex Multimodal Proxy",
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "baseURL": "http://localhost:7777/v1",
+        "apiKey": "not-needed"
+      },
+      "models": {
+        "proxy/deepseek-v4-pro": {
+          "name": "DeepSeek V4 Pro (Cortex Proxy, tu cuenta)",
+          "cost": { "input": 0.435, "output": 0.87 },
+          "limit": { "context": 819200, "output": 384000 },
+          "modalities": { "input": ["text", "image", "audio", "video", "pdf"], "output": ["text"] }
+        },
+        "proxy/deepseek-v4-flash": {
+          "name": "DeepSeek V4 Flash (Cortex Proxy, tu cuenta)",
+          "cost": { "input": 0.14, "output": 0.28 },
+          "limit": { "context": 819200, "output": 384000 },
+          "modalities": { "input": ["text", "image", "audio", "video", "pdf"], "output": ["text"] }
+        },
+        "MiniMax-M3": {
+          "name": "MiniMax M3 (Passthrough directo, tu cuenta)",
+          "cost": { "input": 0.30, "output": 1.20 },
+          "limit": { "context": 1048576, "output": 131072 },
+          "modalities": { "input": ["text", "image", "video"], "output": ["text"] }
+        }
+      }
+    }
+  }
+}
+```
+
+Required `BRAIN_MODE=deepseek` in `.env` plus `DEEPSEEK_API_KEY`. `MINIMAX_API_KEY` is optional and enables the `MiniMax-M3` passthrough.
 
 ## Claude Code Integration
 

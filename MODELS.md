@@ -8,6 +8,7 @@
 |----------|----------|----------|----------|---------|------------|---------------------|---------------------------|
 | `proxy/glm-5.2` | `glm-5.2` | OpenAI | ✅ Always-on | 800K¹ | 131K | $1.40 / $4.40 | $1.54 / $4.40 |
 | `proxy/deepseek-v4-pro` | `deepseek-v4-pro` | OpenAI | ✅ Always-on | 800K¹ | 384K | $0.435 / $0.87 | $0.575 / $1.15 |
+| `proxy/deepseek-v4-flash` | `deepseek-v4-flash` | OpenAI | ✅ Always-on | 800K¹ | 384K | $0.14 / $0.28 | (your account, BRAIN_MODE=deepseek) |
 | `proxy/qwen3.7-max` | `qwen3.7-max` | Anthropic | ✅ Always-on | 800K¹ | 65K | $2.50 / $7.50 | $2.64 / $7.78 |
 | `proxy/mimo-v2.5-pro` | `mimo-v2.5-pro` | OpenAI | ✅ Always-on | 800K¹ | 65K | $1.74 / $3.48 | $1.88 / $3.76 |
 | `proxy/local-deepseek-v4-pro`  | `deepseek-v4-pro` | OpenAI | ✅ | 800K | 384K | $0.435 / $0.87 | (your account) |
@@ -15,7 +16,7 @@
 
 All brains are text-only. Images go through MiMo V2.5 senses layer first (adds $0.14/$0.28 per 1M).
 ¹ Context column = client-visible auto-compact target (OpenCode TUI uses this to decide when to compact its own history). All 4 brains accept **1M** upstream natively; the proxy sends up to 1M via `BrainModelEntry.context` (see `src/services/brainRegistry.ts`). The 200K gap is mandatory headroom for MiMo senses image descriptions — see CLAUDE.md § "Brain context window policy".
-All brains use `thinking: { type: "enabled" }` for max reasoning.
+All brains use `thinking: { type: "enabled" }` for max reasoning. The DeepSeek direct path (`BRAIN_MODE=deepseek`/`hybrid`) also sets `reasoning_effort: "max"` for Pro and Flash — restoring the v2.0.0 default that the v3.2.0 refactor inadvertently dropped. OpenCode Go brains inherit the upstream default (`high`).
 All brains use OpenAI-format endpoint at `https://opencode.ai/zen/go/v1/chat/completions`.
 
 ## Passthrough Models (Natively Multimodal, no proxy prefix)
@@ -45,7 +46,7 @@ Exposed in `/v1/models` according to the active `BRAIN_MODE` (`getActiveProvider
 
 ## Thinking Configuration
 
-All 4 brains use max thinking via `thinking: { type: "enabled" }` parameter.
+All 4 brains (OpenCode Go + DeepSeek direct) use `thinking: { type: "enabled" }`. DeepSeek V4 Pro/Flash via the direct path additionally set `reasoning_effort: "max"` for full agent-grade reasoning (see "Thinking Configuration" below).
 
 | Model | Thinking Behavior | Notes |
 |-------|-------------------|-------|
@@ -97,6 +98,5 @@ These models were in the brain catalog but removed in v3.0.0:
 | `proxy/glm-5.1` | Removed — consolidated to 2 brains (later expanded to 4) |
 | `proxy/qwen3.7-plus` | Removed — consolidated to 2 brains (later expanded to 4) |
 | `proxy/qwen3.6-plus` | Removed — consolidated to 2 brains (later expanded to 4) |
-| `proxy/deepseek-v4-flash` | Removed — consolidated to 2 brains (later expanded to 4) |
 | `minimax-m3` (passthrough) | Removed — only mimo-v2.5 kept as passthrough |
 | `minimax-m2.7` (passthrough) | Removed — only mimo-v2.5 kept as passthrough |
