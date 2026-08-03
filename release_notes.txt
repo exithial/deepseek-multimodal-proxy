@@ -1,55 +1,52 @@
-# Cortex Multimodal Proxy v3.3.0 — Release Notes
+# Cortex Multimodal Proxy v3.4.0 — Release Notes
 
 ## What's new
 
-Cortex Multimodal Proxy v3.3.0 adds an informational dashboard. It captures every request that flows through the proxy — what model, how many tokens in and out, how long it took, whether it was served from cache, whether it errored — and surfaces the totals and the recent activity on a single page you can open in your browser.
+Cortex Multimodal Proxy v3.4.0 makes the dashboard a real analytical tool, not just a live counter. The hero totals, the chart, and the per-model table all respond to a single time-window selector at the top of the page — pick **24 hours, 7 days, 30 days, 90 days, total, or a custom range**, and every number on the page re-aggregates to match. A new endpoint lets you pull the same data programmatically so you can build your own reports.
 
-If you run the proxy and want to know what is actually costing you money, what is hitting cache, and what is failing, the dashboard answers those questions at a glance.
+For direct-DeepSeek users, this release also restores the maximum-reasoning setting that the previous refactor had accidentally dropped. DeepSeek V4 Pro and Flash now reason at full effort, which is what DeepSeek recommends for agent scenarios and what Flash 0731 was retrained for.
 
-Open `http://<your-proxy-host>:7777/dashboard/` once the proxy is running and `DASHBOARD_ENABLED=true` is set in `.env`.
+## Dashboard: pick a window, see the numbers that matter
 
-The dashboard shows:
+Until now, the hero cards showed totals since the database was first created. As time passed, those numbers grew into the tens of millions and stopped being useful — you could not tell whether you were looking at the last day, the last quarter, or everything since launch. v3.4.0 fixes that.
 
-- Six hero cards — total tokens (split in/out), USD cost, request count (ok / errors), cache hit ratio (with hits / misses), error rate, uptime.
-- A 24-hour or 30-day time-series chart of tokens in and out, toggleable with two buttons.
-- A per-model breakdown table sorted by request count — model name, brain, in/out tokens, USD, requests, errors, cache hits, p50 latency, p95 latency.
-- A live log tail showing the last 200 lines of `combined.log` and `error.log`, with a level filter (info+, warn+, error, debug) and a substring search box.
-- A footer with version, mode, providers, and how many log lines the tail is reading.
+- **Global range selector** at the top of the dashboard: `24H / 7D / 30D / 90D / TOTAL / CUSTOM`. One click changes every panel on the page — hero cards, chart, and per-model table all read from the same active window.
+- **Compact number formatting**: `$48.8 M`, `12.3 K`, `1.23 B` — totals are abbreviated so the cards never overflow, on any locale or any time range.
+- **Custom range**: pick a `FROM` and a `TO` date and the page pulls the data for that exact window. Useful for end-of-month reporting, post-incident review, or vendor comparison.
+- **The chart obeys the global selector** too. No more toggling two separate controls in two different places.
 
-The dashboard polls the proxy every 10 seconds, so the numbers you see are always close to live. It uses the same single port and the same Express app as the rest of the proxy, so there is no new process to manage and no new auth surface beyond what the proxy already has.
+## Programmatic access for your own reports
 
-## Why this matters
+A new endpoint, `GET /v1/dashboard/range?from=<iso>&to=<iso>`, returns the same data the dashboard renders, in JSON, for any time window you specify. The series auto-buckets to hourly for spans of 48 hours or less, and daily for longer spans. Requests beyond the configured retention window return a structured 400 with the maximum allowed range in the body.
 
-- **Visibility** — until now, the proxy told you almost nothing about what it was doing. You had to scrape logs to answer "what did I spend on OpenCode Go this week?" The dashboard answers that question in one click.
-- **Cache debugging** — the dashboard shows cache hits separately from misses, so you can tell at a glance whether the prompt-cache hints you set up are actually working.
-- **Catch regressions early** — error rate, p95 latency, and per-model breakdown let you see when a particular provider starts misbehaving without having to wait for the user to complain.
+Use it from your own scripts to:
+
+- Pull last month's token spend per model into a spreadsheet.
+- Build a Slack digest that compares this week to last week.
+- Wire it into a Grafana panel or a Datadog custom metric.
+- Export usage data to your finance team's monthly close.
+
+The data is exactly what the dashboard sees, with the same cache-hit attribution, the same cost per million tokens, and the same per-model and per-brain breakdown.
+
+## Direct DeepSeek: max reasoning, restored
+
+If you run the proxy against your own DeepSeek account (`BRAIN_MODE=deepseek` or `hybrid`), the proxy now sends `reasoning_effort: "max"` on every direct DeepSeek call — both Pro and Flash. The previous release had silently dropped this setting during a refactor, so direct DeepSeek was reasoning at `high` instead of `max`. The fix is a one-line change in the payload builder; the impact is on the quality of every response DeepSeek produces for you.
+
+This change only affects the direct-DeepSeek path. The OpenCode Go flavor (the alternative way the same models reach the proxy) is unchanged — it always inherited the upstream default.
 
 ## What's stable
 
 - The proxy's public API (`/v1/chat/completions`, `/v1/messages`, `/v1/models`, `/health`, `/v1/cache/stats`) is unchanged.
 - BRAIN_MODE behavior, model selection, multimodal pipeline, and retry policy are unchanged.
-- If you set `DASHBOARD_ENABLED=false` (the new default), the dashboard is fully off — no DB writes, no extra endpoint, zero overhead.
+- The existing `/v1/dashboard/snapshot` endpoint still works. The new `/v1/dashboard/range` is purely additive.
 - Existing clients do not need to change.
-
-## Security
-
-- The dashboard reads token counts, USD cost, and the last 200 lines of `combined.log` and `error.log`. Logs are server-side redacted before they reach the browser: Bearer tokens, `sk-...` API keys, email addresses, `data:image` base64 URIs, and long base64 blobs are all stripped.
-- The dashboard is unauthenticated, like the rest of the proxy. **Keep it on a trusted network** (Tailscale, VPN, `127.0.0.1`). Never expose it on a public IP or a shared LAN. If you need it on a broader network, put a reverse proxy with auth in front (Caddy, nginx with `auth_basic`, Cloudflare Tunnel with Access, etc.).
-- `DASHBOARD_ENABLED` now defaults to `false`. Operators must consciously enable the dashboard after reading this warning.
-
-## Other improvements in this release
-
-- `MINIMAX_TIMEOUT_MS=300000` (5 minutes) — long thinking runs on large contexts no longer hit an implicit zero-second axios timeout. If you don't set it, it falls back to `SENSES_TIMEOUT_MS`.
-- `MINIMAX_INPUT_PRICE` / `MINIMAX_OUTPUT_PRICE` env vars — set your real per-token rates (USD per million tokens) so the dashboard reports actual cost for `MiniMax-M3` traffic. The dashboard starts a warning at boot if `MINIMAX_API_KEY` is set but both prices are zero.
-- MiniMax-M3 streaming fix — every chunk in a stream now shares the same `chatcmpl-<uuid>` id instead of generating a fresh id per chunk. Clients like OpenCode use the chunk id to accumulate context token counts; the per-chunk-id bug was causing OpenCode's context counter to reset to zero on every response.
 
 ## Upgrading
 
-1. Pull the new image / checkout the tag.
-2. Set `DASHBOARD_ENABLED=true` in `.env` if you want the dashboard. Leave it `false` (the default) to disable.
-3. Set `MINIMAX_INPUT_PRICE` and `MINIMAX_OUTPUT_PRICE` if you use MiniMax-M3 and want real cost tracking.
-4. If your proxy is on Docker, add the new `proxy-data` named volume (already declared in `compose.yml`). The first start creates the SQLite database inside the volume.
-5. Restart the container. No client reconfiguration required.
+1. Pull the new image or checkout the v3.4.0 tag.
+2. Restart the container. The new dashboard range selector appears automatically; no env changes required.
+3. If you want to use the new endpoint programmatically, hit `GET /v1/dashboard/range?from=<iso>&to=<iso>` from any tool that can call the proxy. Keep the range inside `DASHBOARD_RETENTION_DAYS` (default 90) or you will get a 400 with the maximum allowed span in the body.
+4. If you operate in `BRAIN_MODE=deepseek` or `hybrid`, the `reasoning_effort: max` change is automatic — no configuration needed. Expect higher-quality (and slightly slower) responses from DeepSeek V4 Pro and Flash.
 
 ## Credits
 

@@ -7,7 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- **Dashboard: windowed cards + historical range.** The hero now shows a range selector (`24h / 7d / 30d / 90d / total`) so the Σ total card always reflects a labeled window; large numbers are abbreviated (e.g. `48,8 M`). A new `GET /v1/dashboard/range?from=<iso>&to=<iso>` endpoint returns totals + an auto-bucketed series (hourly ≤48h, daily otherwise) capped at `DASHBOARD_RETENTION_DAYS`. The chart header gets a `custom` toggle with two `datetime-local` inputs that fetch the new endpoint and replace the series.
+## [3.4.0] - 2026-08-03
+
+### Added
+
+- **Dashboard: global range selector + arbitrary historical range endpoint** (PR #13). The dashboard now has a single `24h / 7d / 30d / 90d / total` selector at the top of the page that drives the hero cards, the chart, and the per-model table. The previous dual `cardRange` / `chartRange` setup is gone — one range, one source of truth, snapshot polls do not clobber a custom range view.
+  - `GET /v1/dashboard/range?from=<iso>&to=<iso>` (new endpoint) returns totals + an auto-bucketed series (hourly for spans ≤48h, daily otherwise). Capped at `DASHBOARD_RETENTION_DAYS`; returns `400` with structured bodies for `missing_params`, `invalid_timestamp`, `invalid_range`, and `range_exceeds_retention` (the last one includes `maxMs` in the body).
+  - `dashboardService.getRange(fromTs, toTs)` and the refactor of `totalsRow` → `totalsInRange(fromTs, toTs)` + `hourlyBucketsInRange` + `breakdownInRange` (half-open `[from, to)` bounds). `windowsRow()` returns `Record<WindowKey, WindowBreakdown>` (totals + filtered `byModel` + `byBrain` per window) so every preset window is pre-aggregated server-side.
+  - `fmtCompact(value, { currency? })` helper for large-number display (`48,8 M`, `12,3 K`, `1,23 B`) so totals never overflow the hero card on any locale.
+  - `CUSTOM` range expand with inline `DESDE / HASTA / APPLY` panel. Hero tag becomes `Σ <range>` (e.g. `Σ 24H`, `Σ rango` for custom).
+  - 12 new unit tests: `fmtCompact` (8 cases), `windowsRow` windowed totals + `byModel` filtering (2), `getRange` hourly/daily auto-bucket + half-open bounds (5), route validation (6). Total: 265/265 passing.
+  - 1 new dev dep: `supertest@^7` (dev only) for the route tests.
+- **Dashboard responsive layout for narrow viewports** (PR #12). Hero cards no longer overflow on Fold6 cover / ≤600px screens. New `public/dashboard/mobile.js` (121 lines) dedicated to responsive logic, kept separate from `app.js`. 47 new unit tests in `tests/unit/dashboard/mobile.test.ts`.
+
+### Fixed
+
+- **Direct DeepSeek payload: `reasoning_effort: "max"` restored on Pro and Flash** (PR #14). The v3.2.0 pluggable-provider refactor had silently dropped the v2.0.0 default; `deepseekBrainProvider` was only sending `thinking: { type: "enabled" }`, causing DeepSeek upstream to fall back to `reasoning_effort: "high"` instead of `max`. DeepSeek officially recommends `max` for agent scenarios; Flash 0731 was re-trained at `max` effort. Fix: when `thinking` is enabled, also set `payload.reasoning_effort = "max"`. OpenCode Go brains (which proxy the same models through the OpenCode Go flavor) are unaffected — they inherit the upstream default. Test covers both `deepseek-v4-pro` and `deepseek-v4-flash`.
+- **Dashboard: `.cards-range` styles restored** (lost during merge resolution of #13). Without them the range selector buttons rendered as raw text adjacent to the hero cards with no visible separation. Re-added 40 lines of CSS: 40px margin-bottom on the wrapper, segregated control visuals, full-width on ≤600px so buttons wrap cleanly on narrow viewports.
+- **Dashboard: hero tag and chart title now reflect the active range** instead of lifetime totals. Lifetime cards were growing into the tens of millions and visually overflowing; there was no indication of what window the totals covered and no way to reset.
+
+### Changed
+
+- **Documentation: `proxy/deepseek-v4-flash` now visible everywhere it was already running**. The model was already registered at runtime in `providerSelector.ts` for `BRAIN_MODE=deepseek` and `hybrid`, but the user-facing docs (Brain Models table, Pricing table, OpenCode Integration examples, Models section) did not list it. README.md, MODELS.md, and CLAUDE.md updated to reflect the actual behavior. Pricing: $0.435 / $0.87 per 1M (post-June 2026 cut; previous $1.74 / $3.48 was pre-cut).
+- **CLAUDE.md: brain context window policy** notes the restored `reasoning_effort: max` on direct DeepSeek — explicit line added under "All brains use max thinking".
+- **CHANGELOG.md: bullet density** (this entry follows the prior [3.3.0] and [3.2.0] entries' `### Added / ### Changed / ### Fixed` structure; the previous single-bullet `[Unreleased]` block was rewritten to be scannable).
 
 ## [3.3.0] - 2026-07-24
 
