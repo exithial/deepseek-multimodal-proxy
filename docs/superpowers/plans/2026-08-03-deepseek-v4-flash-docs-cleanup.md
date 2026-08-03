@@ -1,23 +1,24 @@
-# DeepSeek V4 Flash Docs Cleanup Implementation Plan
+# DeepSeek V4 docs cleanup + restore `reasoning_effort: "max"` Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Update `MODELS.md`, `README.md`, and `CLAUDE.md` so the doc set reflects that `proxy/deepseek-v4-flash` is currently registered runtime (no code change) for `BRAIN_MODE=deepseek` and `hybrid`.
+**Goal:** Restore `reasoning_effort: "max"` in every direct DeepSeek payload (the v2.0.0 default that the v3.2.0 refactor silently dropped), add a unit test, and bring `MODELS.md` / `README.md` / `CLAUDE.md` in line with the actual behavior.
 
-**Architecture:** Pure docs PR. No code, no tests, no providerSelector changes. Each task touches one file and produces a focused commit. Verification is a sanity sweep over `npm run build`, `npm run test:unit`, `npm run lint`, and a `git grep` for orphan "Removed" mentions.
+**Architecture:** One-line code fix in `deepseekBrainProvider.buildPayload`, two-line test additions in the existing test file, three docs files corrected to reflect actual behavior. Each task is small, focused, and produces a commit that passes `npm run build` / `npm run test:unit` / `npm run lint`.
 
-**Tech Stack:** Markdown, `git`.
+**Tech Stack:** TypeScript, Vitest, Markdown, `git`.
 
 ## Global Constraints
 
-- Working branch: `chore/docs-deepseek-v4-flash` (already created).
-- Spec: `docs/superpowers/specs/2026-08-03-deepseek-v4-flash-docs-cleanup.md` (commit `fd230cd`).
+- Working branch: `chore/docs-deepseek-v4-flash` (already created; not renamed mid-flight).
+- Spec: `docs/superpowers/specs/2026-08-03-deepseek-v4-flash-docs-cleanup.md` (most recent commit `5450345` — expanded scope).
 - No `BRAIN_MODELS_BASE` change — `proxy/deepseek-v4-flash` stays unavailable in `BRAIN_MODE=opencode`.
+- No `opencodeGoBrainProvider.ts` change — OpenCode Go is an abstraction over multiple upstreams; we cannot assume `reasoning_effort` is supported on every one.
 - No `CHANGELOG.md` change.
 - `opencode.deepseek.json` already correct at line 18; do not edit.
 - Commit messages: English, conventional commits, no agent signatures, no emojis.
 - File encoding: UTF-8. Trailing newline on every file (existing convention).
-- The verbatim JSON in Task 2 must match `opencode.deepseek.json` byte-for-byte.
+- The verbatim JSON in Task 4 must match `opencode.deepseek.json` byte-for-byte.
 
 ---
 
@@ -27,32 +28,173 @@ Files modified by this plan:
 
 | File | Responsibility | Change |
 |------|---------------|--------|
-| `MODELS.md` | Brain catalog reference | Add Flash row to Brain Models; remove stale "Removed" row |
+| `src/services/deepseekBrainProvider.ts` | Direct-DeepSeek API caller | Add `reasoning_effort: "max"` to payload when `thinking: true` |
+| `tests/unit/services/deepseekBrainProvider.test.ts` | Provider unit tests | Assert `reasoning_effort` is set when thinking is on, absent when off; add Flash test |
+| `MODELS.md` | Brain catalog reference | Add Flash row to Brain Models; remove stale "Removed" row; correct "max thinking" claims |
 | `README.md` | User-facing install + config guide | Add Flash row to Pricing; add sub-section for `BRAIN_MODE=deepseek` opencode.json |
-| `CLAUDE.md` | AI agent operating context | Split Brain options line into mode-scoped bullets |
+| `CLAUDE.md` | AI agent operating context | Split Brain options line into mode-scoped bullets; correct line 14 |
 
-No new files. No code changes.
+No new files.
 
 ---
 
-## Task 1: Update `MODELS.md`
+## Task 1: Restore `reasoning_effort: "max"` in `DeepSeekBrainProvider.buildPayload`
 
 **Files:**
-- Modify: `MODELS.md:5-14` (Brain Models table) — add row for `proxy/deepseek-v4-flash`
-- Modify: `MODELS.md:100` (Legacy Models table) — delete the stale "Removed" row
+- Modify: `src/services/deepseekBrainProvider.ts:67` — extend the `thinking` block to also set `reasoning_effort: "max"`
 
 **Interfaces:**
-- Consumes: the existing `proxy/local-deepseek-v4-flash` row at line 14 as the visual reference for the new row.
-- Produces: a Brain Models table that lists both `proxy/deepseek-v4-flash` (deepseek mode) and `proxy/local-deepseek-v4-flash` (hybrid mode), and a Legacy Models table that no longer mis-claims Flash was removed.
+- Consumes: the existing `thinking: boolean` parameter from `BrainModelEntry` (already passed into `buildPayload`); the caller's intent is "use maximum reasoning when thinking is on".
+- Produces: a payload that, when `thinking === true`, carries both `thinking: { type: "enabled" }` and `reasoning_effort: "max"`; when `thinking === false`, neither.
 
-- [ ] **Step 1: Read current state of `MODELS.md` lines 1-25 and 95-102**
+- [ ] **Step 1: Read current `buildPayload` to confirm target line**
 
 Run:
 ```bash
-sed -n '1,25p;95,102p' MODELS.md
+sed -n '46,70p' src/services/deepseekBrainProvider.ts
 ```
 
-Expected: shows the Brain Models table (with `proxy/local-deepseek-v4-flash` at line 14) and the Legacy Models table (with the stale `proxy/deepseek-v4-flash` "Removed" entry at line 100).
+Expected: shows the current `if (thinking) payload.thinking = { type: "enabled" };` line as the last line of the function.
+
+- [ ] **Step 2: Extend the `thinking` block to also set `reasoning_effort: "max"`**
+
+The `Edit` tool call. Anchor: the full single-line `if (thinking) payload.thinking = { type: "enabled" };` line. Replace with:
+
+```typescript
+    if (thinking) {
+      payload.thinking = { type: "enabled" };
+      payload.reasoning_effort = "max";
+    }
+```
+
+Use indentation matching the file (4 spaces). The surrounding `if (request.tools) payload.tools = request.tools;` and `if (thinking) payload.thinking = { type: "enabled" };` are both 4-space indented single-liners; we are converting the latter into a 4-space-indented 3-line block.
+
+- [ ] **Step 3: Verify the diff is exactly the conversion**
+
+Run:
+```bash
+git diff src/services/deepseekBrainProvider.ts
+```
+
+Expected: shows a single hunk converting the one-line `if` into a three-line `if` block, with no other changes. No whitespace drift, no imports added, no comments added.
+
+- [ ] **Step 4: Commit `deepseekBrainProvider.ts`**
+
+```bash
+git add src/services/deepseekBrainProvider.ts
+git commit -m "fix(deepseek): restore reasoning_effort=max on direct provider (v2.0.0 regression)"
+```
+
+Expected: a single commit on `chore/docs-deepseek-v4-flash` containing only the one-file code change.
+
+---
+
+## Task 2: Lock in `reasoning_effort: "max"` with unit tests
+
+**Files:**
+- Modify: `tests/unit/services/deepseekBrainProvider.test.ts:41-70` — extend two existing tests
+- Modify: `tests/unit/services/deepseekBrainProvider.test.ts` — append a new test for `deepseek-v4-flash`
+
+**Interfaces:**
+- Consumes: `deepseekBrainProvider.buildPayload` (which now sets `reasoning_effort: "max"` when `thinking: true`).
+- Produces: test assertions that fail if a future refactor drops `reasoning_effort: "max"` or applies it when `thinking: false`.
+
+- [ ] **Step 1: Extend the existing `thinking=true` test (line 41)**
+
+The current test ends with `expect(payload.thinking).toEqual({ type: "enabled" });` (line 54). Add one line after:
+
+```typescript
+    expect(payload.thinking).toEqual({ type: "enabled" });
+    expect(payload.reasoning_effort).toBe("max");
+```
+
+The `Edit` tool call. Anchor on the existing `expect(payload.thinking).toEqual({ type: "enabled" });` line (unique in this test file at that point). Replace with the two lines above.
+
+- [ ] **Step 2: Extend the existing `thinking=false` test (line 57)**
+
+The current test ends with `expect(payload.thinking).toBeUndefined();` (line 69). Add one line after:
+
+```typescript
+    expect(payload.thinking).toBeUndefined();
+    expect(payload.reasoning_effort).toBeUndefined();
+```
+
+The `Edit` tool call. Anchor on the existing `expect(payload.thinking).toBeUndefined();` line. Replace with the two lines above.
+
+- [ ] **Step 3: Append a new test for `deepseek-v4-flash`**
+
+Add a new `it(...)` block after the existing `"name is 'deepseek-direct'"` test (line 129, currently the last `it` in the file, before the closing `});` on line 135). The new test:
+
+```typescript
+  it("buildPayload sets reasoning_effort: max for deepseek-v4-flash upstream", async () => {
+    vi.stubEnv("DEEPSEEK_API_KEY", "sk-test-deepseek");
+    const { deepseekBrainProvider } = await import(
+      "../../../src/services/deepseekBrainProvider"
+    );
+    const payload = deepseekBrainProvider.buildPayload(
+      { model: "x", messages: [{ role: "user" as const, content: "hi" }] },
+      "deepseek-v4-flash",
+      true,
+      1_048_576,
+      "openai",
+    );
+    expect(payload.model).toBe("deepseek-v4-flash");
+    expect(payload.thinking).toEqual({ type: "enabled" });
+    expect(payload.reasoning_effort).toBe("max");
+  });
+```
+
+The `Edit` tool. Anchor on the closing `});` of the `"name is 'deepseek-direct'"` test plus the outer `});` of the `describe` block. Replace with the same closing `});` plus the new `it` block inserted between.
+
+- [ ] **Step 4: Run only the DeepSeek provider tests to verify they pass**
+
+Run:
+```bash
+npm run test:unit -- deepseekBrainProvider
+```
+
+Expected: 8 tests pass (the original 5 + the new Flash test + 2 extended existing tests = 8), 0 fail. The new `reasoning_effort: "max"` assertions in Steps 1 and 2 would fail against the pre-fix code; their passing here proves the code change from Task 1 is in effect.
+
+- [ ] **Step 5: Run the full unit suite**
+
+Run:
+```bash
+npm run test:unit
+```
+
+Expected: 266 tests pass (was 264; +2 from extended existing assertions counted as part of the same tests). No regressions.
+
+- [ ] **Step 6: Commit the test file**
+
+```bash
+git add tests/unit/services/deepseekBrainProvider.test.ts
+git commit -m "test(deepseek): lock in reasoning_effort=max for Pro and Flash payloads"
+```
+
+Expected: a single commit on `chore/docs-deepseek-v4-flash` containing only the test file changes.
+
+---
+
+## Task 3: Update `MODELS.md` (Brain Models table, Legacy Models, and thinking claims)
+
+**Files:**
+- Modify: `MODELS.md:5-14` (Brain Models table) — add row for `proxy/deepseek-v4-flash`
+- Modify: `MODELS.md:19` — replace single-line "max thinking" claim with the actual behavior
+- Modify: `MODELS.md:49` — same correction
+- Modify: `MODELS.md:101` (Legacy Models table after the previous commit) — delete the stale "Removed" row
+
+**Interfaces:**
+- Consumes: the existing `proxy/local-deepseek-v4-flash` row at line 15 as the visual reference for the new row; the existing line 19 and 49 wording as anchors.
+- Produces: a Brain Models table that lists both `proxy/deepseek-v4-flash` (deepseek mode) and `proxy/local-deepseek-v4-flash` (hybrid mode); a Legacy Models table that no longer mis-claims Flash was removed; accurate "max thinking" prose that mentions `reasoning_effort: "max"` for the direct DeepSeek path.
+
+- [ ] **Step 1: Read current state of `MODELS.md` lines 1-25**
+
+Run:
+```bash
+sed -n '1,25p' MODELS.md
+```
+
+Expected: shows the Brain Models table and the prose paragraph below it containing lines 17-19 (with the "All brains use `thinking: { type: "enabled" }` for max reasoning" claim).
 
 - [ ] **Step 2: Add `proxy/deepseek-v4-flash` row to Brain Models table**
 
@@ -62,103 +204,106 @@ Insert immediately after the `proxy/deepseek-v4-pro` row (line 10) and before th
 | `proxy/deepseek-v4-flash` | `deepseek-v4-flash` | OpenAI | ✅ Always-on | 800K¹ | 384K | $0.14 / $0.28 | (your account, BRAIN_MODE=deepseek) |
 ```
 
-The `Edit` tool call: replace line 10's literal content (including the trailing newline) with line 10 + the new row.
+The `Edit` tool. Anchor on the line 10 row plus the line 11 row. Replace with line 10 + new row + line 11.
 
-- [ ] **Step 3: Verify the Brain Models table now has both Flash rows**
+- [ ] **Step 3: Update line 19 "max thinking" claim**
 
-Run:
-```bash
-grep -n 'deepseek-v4-flash' MODELS.md
+The `Edit` tool. Anchor on the existing line:
+
+```md
+All brains use `thinking: { type: "enabled" }` for max reasoning.
 ```
 
-Expected output (in file order):
+Replace with:
+
+```md
+All brains use `thinking: { type: "enabled" }` for max reasoning. The DeepSeek direct path (`BRAIN_MODE=deepseek`/`hybrid`) also sets `reasoning_effort: "max"` for Pro and Flash — restoring the v2.0.0 default that the v3.2.0 refactor inadvertently dropped. OpenCode Go brains inherit the upstream default (`high`).
 ```
-10:| `proxy/deepseek-v4-flash` | `deepseek-v4-flash` | OpenAI | ✅ Always-on | 800K¹ | 384K | $0.14 / $0.28 | (your account, BRAIN_MODE=deepseek) |
-15:| `proxy/local-deepseek-v4-flash` | `deepseek-v4-flash` | OpenAI | ✅ | 800K | 384K | $0.14 / $0.28 | (your account) |
+
+- [ ] **Step 4: Update line 49 "max thinking" claim (now line 49 because no insertion above it)**
+
+The `Edit` tool. Anchor on the existing line:
+
+```md
+All 4 brains use max thinking via `thinking: { type: "enabled" }` parameter.
 ```
 
-(Line numbers may shift after the insert; the second match moves from 14 to 15. If the row content matches above, the edit succeeded.)
+Replace with:
 
-- [ ] **Step 4: Delete the stale "Removed" row at old line 100**
+```md
+All 4 brains (OpenCode Go + DeepSeek direct) use `thinking: { type: "enabled" }`. DeepSeek V4 Pro/Flash via the direct path additionally set `reasoning_effort: "max"` for full agent-grade reasoning (see "Thinking Configuration" below).
+```
 
-The exact line to delete (no longer accurate after v3.2.0):
+- [ ] **Step 5: Delete the stale "Removed" row at line ~101**
+
+The exact line to delete (one entry only):
 
 ```md
 | `proxy/deepseek-v4-flash` | Removed — consolidated to 2 brains (later expanded to 4) |
 ```
 
-The `Edit` tool: replace the entire line (including its trailing newline) with an empty string. Use the `Edit` tool with `oldString` containing the table separator row above as anchor (line 99) plus the stale row, and `newString` containing only the anchor.
+The `Edit` tool. Anchor on the previous table row (`proxy/qwen3.6-plus`) plus the stale row. Replace with just the previous row.
 
-- [ ] **Step 5: Verify no orphan "Removed" mention of Flash in `MODELS.md`**
+- [ ] **Step 6: Verify the file**
 
 Run:
 ```bash
-grep -n 'proxy/deepseek-v4-flash' MODELS.md
+grep -n 'deepseek-v4-flash\|reasoning_effort' MODELS.md
 ```
 
-Expected output: exactly two rows — one in the Brain Models table (the new row from Step 2) and one in the Legacy Models table (none, since Step 4 deleted it). If the legacy table still shows the "Removed" line, repeat Step 4.
+Expected output (in file order):
+- Two Brain Models table rows (one for `proxy/deepseek-v4-flash`, one for `proxy/local-deepseek-v4-flash`).
+- One mention of `reasoning_effort` in the corrected line 19 prose.
+- One mention of `reasoning_effort` in the corrected line 49 prose.
+- NO occurrence of `proxy/deepseek-v4-flash` adjacent to "Removed".
 
-- [ ] **Step 6: Commit `MODELS.md`**
+- [ ] **Step 7: Commit `MODELS.md`**
 
 ```bash
 git add MODELS.md
-git commit -m "docs(models): add deepseek-v4-flash to brain catalog; remove stale Removed entry"
+git commit -m "docs(models): add deepseek-v4-flash row; correct max thinking claims with reasoning_effort"
 ```
 
-Expected: a single commit on `chore/docs-deepseek-v4-flash` containing only `MODELS.md` changes.
+Expected: a single commit on `chore/docs-deepseek-v4-flash` containing only `MODELS.md` changes. This **amends** the prior `6591ef9 docs(models): add deepseek-v4-flash to brain catalog; remove stale Removed entry` commit; the new commit supersedes the parts the previous one handled, and adds the prose corrections. (No force-push, no history rewrite — just a forward commit on top.)
 
 ---
 
-## Task 2: Update `README.md`
+## Task 4: Update `README.md`
 
 **Files:**
 - Modify: `README.md:41-50` (Pricing table) — add row for `proxy/deepseek-v4-flash`
-- Modify: `README.md:100-155` (OpenCode Integration) — add a sub-section `### For BRAIN_MODE=deepseek` immediately after the existing `opencode.json` example (after line 153) and before the `## Claude Code Integration` heading (line 155)
+- Modify: `README.md:100-155` (OpenCode Integration) — add a sub-section `### For BRAIN_MODE=deepseek`
 
 **Interfaces:**
 - Consumes: the existing `proxy/local-deepseek-v4-flash` row at line 48 as the visual reference for the new row; the `opencode.deepseek.json` file at the repo root as the verbatim source for the new sub-section.
 - Produces: a Pricing table that lists both `proxy/deepseek-v4-flash` (deepseek mode) and `proxy/local-deepseek-v4-flash` (hybrid mode), and an OpenCode Integration section that links to `opencode.deepseek.json` for `BRAIN_MODE=deepseek` users.
 
-- [ ] **Step 1: Read current state of `README.md` lines 41-50 and 100-160**
+- [ ] **Step 1: Read current state of `README.md` lines 41-50 and 150-160**
 
 Run:
 ```bash
-sed -n '41,50p;100,160p' README.md
+sed -n '41,50p;150,160p' README.md
 ```
 
-Expected: shows the Pricing table (with `proxy/local-deepseek-v4-flash` at line 48) and the OpenCode Integration / Claude Code Integration sections.
+Expected: shows the Pricing table and the boundary between the existing `opencode.json` example (closing at line 154) and the `## Claude Code Integration` heading (line 156).
 
 - [ ] **Step 2: Add `proxy/deepseek-v4-flash` row to Pricing table**
 
-Insert immediately after the `proxy/local-deepseek-v4-flash` row (line 48) and before the `mimo-v2.5` (passthrough) row (line 49). The new row:
+Insert immediately after the `proxy/local-deepseek-v4-flash` row. The new row:
 
 ```md
 | `proxy/deepseek-v4-flash` | DeepSeek V4 Flash via your account (BRAIN_MODE=deepseek) | User-billed |
 ```
 
-The `Edit` tool: anchor on the `proxy/local-deepseek-v4-flash` row plus the existing `mimo-v2.5` row, replace with the same two rows plus the new row inserted between them.
+The `Edit` tool. Anchor on the `proxy/local-deepseek-v4-flash` row plus the next `mimo-v2.5` row. Replace with both rows plus the new row inserted between them.
 
-- [ ] **Step 3: Verify the Pricing table now shows both Flash rows**
+- [ ] **Step 3: Add `### For BRAIN_MODE=deepseek` sub-section to OpenCode Integration**
 
-Run:
-```bash
-grep -n 'proxy/deepseek-v4-flash' README.md
-```
+Insert immediately after the closing ` ```` ` of the existing `opencode.json` example (line 154) and before the `## Claude Code Integration` heading (line 156). Heading: `### For BRAIN_MODE=deepseek`. Reference the `opencode.deepseek.json` file at the repo root and paste its full contents verbatim.
 
-Expected output (in file order):
-```
-35:- `deepseek` — only DeepSeek brains under their standard IDs (`proxy/deepseek-v4-pro`, `proxy/deepseek-v4-flash`) + MiniMax M3 vision (if `MINIMAX_API_KEY` set). Requires `DEEPSEEK_API_KEY`.
-49:| `proxy/deepseek-v4-flash` | DeepSeek V4 Flash via your account (BRAIN_MODE=deepseek) | User-billed |
-49_or_50:... (existing `proxy/local-deepseek-v4-flash` row, line may shift)
-```
+The exact text to insert (between the ` ```` ` and the `## Claude Code Integration` heading):
 
-The first match is the existing Modes description (unchanged). The new match is the Pricing table row. Confirm both Pricing rows are present.
-
-- [ ] **Step 4: Add `### For BRAIN_MODE=deepseek` sub-section to OpenCode Integration**
-
-Insert after the existing `opencode.json` example ends (after line 153, which is the closing `}` plus the closing ` ```` ` of the code block) and before the `## Claude Code Integration` heading (line 155). The new sub-section:
-
-```md
+````md
 ### For BRAIN_MODE=deepseek
 
 Use `opencode.deepseek.json` from the repo root (or copy its contents into `~/.config/opencode/opencode.json`). This file declares `proxy/deepseek-v4-pro` and `proxy/deepseek-v4-flash` (both routed via your DeepSeek account) plus the `MiniMax-M3` passthrough.
@@ -200,20 +345,29 @@ Use `opencode.deepseek.json` from the repo root (or copy its contents into `~/.c
 ```
 
 Required `BRAIN_MODE=deepseek` in `.env` plus `DEEPSEEK_API_KEY`. `MINIMAX_API_KEY` is optional and enables the `MiniMax-M3` passthrough.
-```
+````
 
-The `Edit` tool: anchor on the closing `}` + ```` ``` ```` of the existing `opencode.json` example (lines 152-153) plus the `## Claude Code Integration` heading (line 155), replace with the same lines plus the new sub-section inserted between them.
+The `Edit` tool. Anchor on the closing ` ```` ` of the existing example plus the `## Claude Code Integration` heading (with the blank line between them). Replace with ` ```` ` + blank line + new sub-section + blank line + `## Claude Code Integration`.
 
-- [ ] **Step 5: Verify the JSON in the new sub-section matches `opencode.deepseek.json` byte-for-byte**
+- [ ] **Step 4: Verify the JSON in the new sub-section matches `opencode.deepseek.json` byte-for-byte**
 
 Run:
 ```bash
-diff <(sed -n '/^{$/,/^}$/p' README.md | head -40) opencode.deepseek.json
+python3 -c "
+import re
+with open('README.md') as f:
+    content = f.read()
+m = re.search(r'### For BRAIN_MODE=deepseek.*?\`\`\`json\n(.*?)\n\`\`\`', content, re.DOTALL)
+new_json = m.group(1) if m else None
+with open('opencode.deepseek.json') as f:
+    src_json = f.read().strip()
+print('JSON MATCH OK' if new_json == src_json else 'JSON MISMATCH')
+"
 ```
 
-Expected: no output (the JSON block extracted from the README sub-section matches `opencode.deepseek.json` byte-for-byte). If `diff` prints any lines, the JSON diverged — re-apply Step 4 from the source file.
+Expected: `JSON MATCH OK`. If `MISMATCH`, re-apply Step 3 from the source file.
 
-- [ ] **Step 6: Commit `README.md`**
+- [ ] **Step 5: Commit `README.md`**
 
 ```bash
 git add README.md
@@ -224,169 +378,202 @@ Expected: a single commit on `chore/docs-deepseek-v4-flash` containing only `REA
 
 ---
 
-## Task 3: Update `CLAUDE.md`
+## Task 5: Update `CLAUDE.md`
 
 **Files:**
-- Modify: `CLAUDE.md:29` — replace the single Brain options line with three mode-scoped bullets.
+- Modify: `CLAUDE.md:14` — replace the misleading "All brains use max thinking" claim with one that distinguishes OpenCode Go from the direct DeepSeek path.
+- Modify: `CLAUDE.md:29-30` — replace the single Brain options line and the redundant Hybrid-only line with three mode-scoped bullets that include `proxy/deepseek-v4-flash` in `BRAIN_MODE=deepseek`.
 
 **Interfaces:**
-- Consumes: the existing line 29 (lists 4 OpenCode Go brains) and line 30 (lists hybrid-only brains).
-- Produces: a `## Models` section that explicitly enumerates which brain IDs are available in each `BRAIN_MODE`.
+- Consumes: the existing line 14 ("All brains use max thinking") and lines 29-30 (Brain options + Hybrid-only brains).
+- Produces: a `## Models` section that accurately enumerates brains per `BRAIN_MODE`, and a thinking claim that no longer overstates OpenCode Go behavior.
 
-- [ ] **Step 1: Read current state of `CLAUDE.md` lines 28-32**
+- [ ] **Step 1: Read current state of `CLAUDE.md` lines 13-32**
 
 Run:
 ```bash
-sed -n '28,32p' CLAUDE.md
+sed -n '13,32p' CLAUDE.md
 ```
 
-Expected: shows the current line 29 (`- Brain options (text-only via `proxy/` prefix): `proxy/glm-5.2`, `proxy/deepseek-v4-pro`, `proxy/qwen3.7-max`, `proxy/mimo-v2.5-pro``) and the existing line 30 (hybrid-only line, untouched).
+Expected: shows line 14 ("All brains use max thinking (`thinking: { type: "enabled" }`)"), then lines 28-30 (Models header + Brain options + Hybrid-only brains).
 
-- [ ] **Step 2: Replace line 29 with three mode-scoped bullets**
+- [ ] **Step 2: Update line 14 "max thinking" claim**
 
-The `Edit` tool: anchor on the existing line 29 literal text plus the existing line 30 (which stays), replace with the four-line version. The new content for line 29:
+The `Edit` tool. Anchor on the existing line 14:
 
 ```md
-- Brain options (text-only via `proxy/` prefix), per `BRAIN_MODE`:
-  - `opencode` (via OpenCode Go): `proxy/glm-5.2`, `proxy/deepseek-v4-pro`, `proxy/qwen3.7-max`, `proxy/mimo-v2.5-pro`
-  - `deepseek` (via your DeepSeek account): `proxy/deepseek-v4-pro`, `proxy/deepseek-v4-flash`
-  - `hybrid`: the `opencode` set plus `proxy/local-deepseek-v4-pro`, `proxy/local-deepseek-v4-flash` (your DeepSeek, prefixed `local-`)
+- All brains use max thinking (`thinking: { type: "enabled" }`)
 ```
 
-Line 30 (the hybrid-only line) is now redundant since the new bullets cover all three modes. **Delete line 30**:
+Replace with:
 
 ```md
+- All brains use max thinking (`thinking: { type: "enabled" }`). Direct DeepSeek V4 Pro/Flash additionally set `reasoning_effort: "max"` (restored from v2.0.0 default; OpenCode Go brains inherit the upstream default).
+```
+
+- [ ] **Step 3: Replace lines 29-30 with three mode-scoped bullets**
+
+The `Edit` tool. Anchor on the original lines 29-30:
+
+```md
+- Brain options (text-only via `proxy/` prefix): `proxy/glm-5.2`, `proxy/deepseek-v4-pro`, `proxy/qwen3.7-max`, `proxy/mimo-v2.5-pro`
 - Hybrid-only brains (BRAIN_MODE=hybrid only): `proxy/local-deepseek-v4-pro`, `proxy/local-deepseek-v4-flash`
 ```
 
-The `Edit` tool: replace the original line 29 + line 30 with the four-line version (new line 29 + three sub-bullets). Use a single `Edit` call covering both original lines.
+Replace with the four-line version:
 
-- [ ] **Step 3: Verify the Models section now lists Flash in deepseek mode**
-
-Run:
-```bash
-sed -n '28,33p' CLAUDE.md
-```
-
-Expected output:
-```
-## Models
+```md
 - Brain options (text-only via `proxy/` prefix), per `BRAIN_MODE`:
   - `opencode` (via OpenCode Go): `proxy/glm-5.2`, `proxy/deepseek-v4-pro`, `proxy/qwen3.7-max`, `proxy/mimo-v2.5-pro`
   - `deepseek` (via your DeepSeek account): `proxy/deepseek-v4-pro`, `proxy/deepseek-v4-flash`
   - `hybrid`: the `opencode` set plus `proxy/local-deepseek-v4-pro`, `proxy/local-deepseek-v4-flash` (your DeepSeek, prefixed `local-`)
-- All brains: thinking enabled
 ```
 
-- [ ] **Step 4: Commit `CLAUDE.md`**
+- [ ] **Step 4: Verify the Models section now lists Flash in deepseek mode and the thinking claim is accurate**
+
+Run:
+```bash
+sed -n '13,18p;28,34p' CLAUDE.md
+```
+
+Expected:
+- Line 14 now references `reasoning_effort: "max"` for direct DeepSeek Pro/Flash.
+- Lines 29-32 are the three mode-scoped bullets (no longer the single "Brain options" line nor the "Hybrid-only brains" line).
+
+- [ ] **Step 5: Commit `CLAUDE.md`**
 
 ```bash
 git add CLAUDE.md
-git commit -m "docs(claude): split brain options by BRAIN_MODE to expose deepseek-mode Flash"
+git commit -m "docs(claude): split brain options by BRAIN_MODE and clarify reasoning_effort scope"
 ```
 
-Expected: a single commit on `chore/docs-deepseek-v4-flash` containing only `CLAUDE.md` changes.
+Expected: a single commit on `chore/docs-deepseek-v4-flash` containing only `CLAUDE.md` changes. This amends the prior `5ac1bbc docs(claude): split brain options by BRAIN_MODE ...` commit; the new commit supersedes the Models bullet change and adds the line 14 correction.
 
 ---
 
-## Task 4: Verify the full PR
+## Task 6: Verify the full PR
 
 **Files:** None modified. This task is a sanity sweep.
 
-**Interfaces:** Consumes the three commits from Tasks 1-3. Produces: a green verification report and a clear `git log` of the PR.
+**Interfaces:** Consumes the six commits from Tasks 1-5. Produces: a green verification report and a clear `git log` of the PR.
 
 - [ ] **Step 1: Confirm we are on the right branch and have the right commits**
 
 Run:
 ```bash
 git status
-git log --oneline -5
+git log --oneline -10
 ```
 
 Expected:
 - `On branch chore/docs-deepseek-v4-flash`
 - `nothing to commit, working tree clean`
-- Four commits on top of `main`'s `813ca2d`:
-  - `chore/docs-deepseek-v4-flash (HEAD)` ← the latest spec commit
-  - `docs(claude): split brain options by BRAIN_MODE ...` ← Task 3
-  - `docs(readme): add deepseek-v4-flash pricing row ...` ← Task 2
-  - `docs(models): add deepseek-v4-flash to brain catalog ...` ← Task 1
+- Eight commits on top of `main`'s `813ca2d` (latest first):
+  - `docs(claude): split brain options by BRAIN_MODE and clarify reasoning_effort scope` ← Task 5
+  - `docs(readme): add deepseek-v4-flash pricing row and BRAIN_MODE=deepseek config example` ← Task 4
+  - `docs(models): add deepseek-v4-flash row; correct max thinking claims with reasoning_effort` ← Task 3
+  - `test(deepseek): lock in reasoning_effort=max for Pro and Flash payloads` ← Task 2
+  - `fix(deepseek): restore reasoning_effort=max on direct provider (v2.0.0 regression)` ← Task 1
+  - `docs(spec): expand scope to restore reasoning_effort=max in DeepSeekBrainProvider` ← spec update
+  - `docs(claude): split brain options by BRAIN_MODE to expose deepseek-mode Flash` ← prior commit
+  - `docs(readme): add deepseek-v4-flash pricing row and BRAIN_MODE=deepseek config example` ← prior commit
+  - `docs(models): add deepseek-v4-flash to brain catalog; remove stale Removed entry` ← prior commit
+  - `docs(plan): implementation plan for deepseek-v4-flash docs cleanup` ← prior commit
+  - `docs(spec): DeepSeek V4 Flash docs cleanup spec (deepseek mode)` ← prior commit
   - `813ca2d fix(dashboard): restore .cards-range styles lost in merge` ← main HEAD
+
+(Note: the branch carries forward the older commits from the docs-only phase. The two `docs(readme): add deepseek-v4-flash pricing row` commits have identical messages because Tasks 3 and 4 supersede the prior versions but were kept as separate forward commits rather than amended.)
 
 - [ ] **Step 2: Verify no orphan "Removed" mention of Flash in living docs**
 
 Run:
 ```bash
-grep -nH 'proxy/deepseek-v4-flash' MODELS.md README.md CLAUDE.md
+grep -nH 'proxy/deepseek-v4-flash' MODELS.md README.md CLAUDE.md | grep -i removed
 ```
 
-Expected: every match is a positive reference (Brain Models row, Pricing row, or Modes bullet). No line should contain `Removed` adjacent to `proxy/deepseek-v4-flash`.
+Expected: no output. If any line contains "Removed" adjacent to `proxy/deepseek-v4-flash`, the spec change is incomplete.
+
+- [ ] **Step 3: Verify `reasoning_effort` references are scoped correctly**
 
 Run:
 ```bash
-grep -B 0 -A 0 'proxy/deepseek-v4-flash' MODELS.md README.md CLAUDE.md | grep -i 'removed'
+grep -rn 'reasoning_effort' src/ tests/ MODELS.md README.md CLAUDE.md
 ```
 
-Expected: no output.
+Expected output:
+- `src/services/deepseekBrainProvider.ts` — exactly one occurrence (the new `payload.reasoning_effort = "max";` line).
+- `tests/unit/services/deepseekBrainProvider.test.ts` — exactly three occurrences (one in each extended/added test).
+- `MODELS.md` — two occurrences (one each in the corrected lines 19 and 49).
+- `CLAUDE.md` — one occurrence (in the corrected line 14).
+- `README.md` — zero occurrences (no change needed there).
 
-- [ ] **Step 3: Run `npm run build`**
+- [ ] **Step 4: Run `npm run build`**
 
 Run:
 ```bash
 npm run build
 ```
 
-Expected: exit code 0 with the project compiling cleanly. No source files changed, so this is a no-op compile check.
+Expected: exit code 0.
 
-- [ ] **Step 4: Run `npm run test:unit`**
+- [ ] **Step 5: Run `npm run test:unit`**
 
 Run:
 ```bash
 npm run test:unit
 ```
 
-Expected: exit code 0. All existing tests pass. The `providerSelector.test.ts:127` assertion and `brainRegistry.test.ts:300-316` exercise continue to pass (no code change, so these are unchanged).
+Expected: exit code 0. **266 tests pass** (was 264; +2 from the two new `reasoning_effort` assertions in the existing two tests; the new Flash test counts as one new test). No regressions in `providerSelector.test.ts`, `brainRegistry.test.ts`, or any other suite.
 
-- [ ] **Step 5: Run `npm run lint`**
+- [ ] **Step 6: Run `npm run lint`**
 
 Run:
 ```bash
 npm run lint
 ```
 
-Expected: exit code 0. Lint is configured to also check Markdown via remark/presets per `package.json`; the formatting of the new rows and the JSON block should match the existing style.
+Expected: exit code 0.
 
-- [ ] **Step 6: Final diff summary**
+- [ ] **Step 7: Final diff summary vs `main`**
 
 Run:
 ```bash
 git diff main..HEAD --stat
 ```
 
-Expected: only three files modified, each under 100 lines net change:
+Expected: only five files modified (or six, if you count the spec/plan as living files):
 ```
- CLAUDE.md |  6 +++---
- MODELS.md |  2 +-
- README.md | 50 ++++++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 53 insertions(+), 5 deletions(-)
+ CLAUDE.md                                          |   8 +-
+ MODELS.md                                          |   4 +-
+ README.md                                          |  43 +++
+ docs/superpowers/plans/2026-08-03-...             | 392 +++++++ (plan)
+ docs/superpowers/specs/2026-08-03-...             | 392 +++++++ (spec, expanded)
+ src/services/deepseekBrainProvider.ts             |   3 +-
+ tests/unit/services/deepseekBrainProvider.test.ts |   8 +-
 ```
 
-(Exact numbers may vary by ±2 lines for the README JSON block; the shape — three files, all under 100 lines, no code files — is the acceptance criterion.)
+The `CLAUDE.md` / `MODELS.md` change is now slightly larger than the docs-only plan predicted (because of the corrected prose); `src/services/deepseekBrainProvider.ts` and the test file appear as new (they weren't in the docs-only plan).
 
-- [ ] **Step 7: Confirm no push happened (gate for user authorization)**
+- [ ] **Step 8: Confirm no push happened**
 
 Run:
 ```bash
 git log origin/chore/docs-deepseek-v4-flash..HEAD 2>/dev/null || echo "branch not on remote yet"
 ```
 
-Expected: `branch not on remote yet` (the user has not yet authorized a push). The plan completes here; the user will run `git push` and create the PR after reviewing the diff.
+Expected: `branch not on remote yet`. The user has not yet authorized `git push` or PR creation.
 
 ---
 
 ## Self-Review (already done inline at write time)
 
-- **Spec coverage:** All five spec changes (Changes 1-5) map to the four tasks. Tasks 1+2 each implement two changes; Task 3 implements one; Task 4 verifies.
+- **Spec coverage:** All spec changes (1, 2, 3, 4, 5, 6, 7, 8, 9) map to the six tasks. Tasks 1-2 implement the code fix and tests; Tasks 3-5 implement the docs corrections; Task 6 verifies.
 - **Placeholder scan:** No "TBD"/"TODO"/"implement later" in any step. Every step shows the exact text or command.
-- **Type consistency:** No new types introduced (docs-only). Existing naming (`proxy/deepseek-v4-flash`, `BRAIN_MODE=deepseek`, `800K¹`, `$0.14 / $0.28`) is consistent across all three files.
-- **Risk note:** No code changes; no `BrainModelEntry` shape changes; no `providerSelector.ts` edits. Verification commands are sanity checks, not regression tests.
+- **Type consistency:** `reasoning_effort` is consistently a string literal `"max"` across code, test, and docs.
+- **Risk note:** The code change is one line plus a wrapping `if` block (3-line diff total). All other changes are docs or test. Reversibility trivial.
+
+---
+
+## Handoff
+
+After all six tasks complete, the branch is ready to push. The user explicitly authorizes `git push` and PR creation in the same conversation turn; otherwise the assistant stops at this verification step and asks for authorization.
