@@ -16,7 +16,7 @@
 
 All brains are text-only. Images go through MiMo V2.5 senses layer first (adds $0.14/$0.28 per 1M).
 ¹ Context column = client-visible auto-compact target (OpenCode TUI uses this to decide when to compact its own history). All 4 brains accept **1M** upstream natively; the proxy sends up to 1M via `BrainModelEntry.context` (see `src/services/brainRegistry.ts`). The 200K gap is mandatory headroom for MiMo senses image descriptions — see CLAUDE.md § "Brain context window policy".
-All brains use `thinking: { type: "enabled" }` for max reasoning.
+All brains use `thinking: { type: "enabled" }` for max reasoning. The DeepSeek direct path (`BRAIN_MODE=deepseek`/`hybrid`) also sets `reasoning_effort: "max"` for Pro and Flash — restoring the v2.0.0 default that the v3.2.0 refactor inadvertently dropped. OpenCode Go brains inherit the upstream default (`high`).
 All brains use OpenAI-format endpoint at `https://opencode.ai/zen/go/v1/chat/completions`.
 
 ## Passthrough Models (Natively Multimodal, no proxy prefix)
@@ -46,7 +46,7 @@ Exposed in `/v1/models` according to the active `BRAIN_MODE` (`getActiveProvider
 
 ## Thinking Configuration
 
-All 4 brains use max thinking via `thinking: { type: "enabled" }` parameter.
+All 4 brains (OpenCode Go + DeepSeek direct) use `thinking: { type: "enabled" }`. DeepSeek V4 Pro/Flash via the direct path additionally set `reasoning_effort: "max"` for full agent-grade reasoning (see "Thinking Configuration" below).
 
 | Model | Thinking Behavior | Notes |
 |-------|-------------------|-------|
